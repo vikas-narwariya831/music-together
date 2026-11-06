@@ -20,6 +20,8 @@ const UserSchema = new mongoose.Schema({
     type: Date, 
     default: Date.now 
   }
+}, {
+  bufferCommands: false // Never hang queries if DB is offline/connecting
 });
 
 module.exports = mongoose.model('User', UserSchema);

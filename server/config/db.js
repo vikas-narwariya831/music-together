@@ -6,21 +6,37 @@ try {
   dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 } catch (e) {}
 
+let cachedPromise = null;
+
 const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     console.warn('⚠️ MONGODB_URI not found in environment variables. Running in memory-only mode.');
-    return;
+    return null;
+  }
+
+  if (!cachedPromise) {
+    cachedPromise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 4000,
+      bufferCommands: false // Never hang/buffer queries for 10s if DB is offline or connecting!
+    }).catch(err => {
+      cachedPromise = null;
+      throw err;
+    });
   }
 
   try {
-    const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-    });
+    const conn = await cachedPromise;
     console.log(`🍃 Connected to MongoDB Atlas: ${conn.connection.host}`);
+    return conn;
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error.message);
-    console.log('ℹ️ Tip: Agar Atlas me IP whitelist error aaye, toh MongoDB Atlas me "Network Access" me jaakar 0.0.0.0/0 allow kar dena.');
+    cachedPromise = null;
+    console.warn('❌ MongoDB Connection Error:', error.message);
+    return null;
   }
 };
 

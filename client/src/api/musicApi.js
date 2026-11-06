@@ -49,7 +49,7 @@ export const fetchRoomDetails = async (roomId) => {
 // Save user nickname linked to persistent browser ID in MongoDB
 export const saveUserProfileToDB = async (browserId, username) => {
   try {
-    const response = await api.post('/user/profile', { browserId, username });
+    const response = await api.post('/user/profile', { browserId, username }, { timeout: 4000 });
     return response.data?.user || null;
   } catch (error) {
     console.warn('saveUserProfileToDB error:', error.message);
@@ -60,10 +60,10 @@ export const saveUserProfileToDB = async (browserId, username) => {
 // Fetch user profile from MongoDB by browser ID
 export const fetchUserProfileFromDB = async (browserId) => {
   try {
-    const response = await api.get(`/user/profile/${browserId}`);
+    const response = await api.get(`/user/profile/${browserId}`, { timeout: 3000 });
     return response.data?.user || null;
   } catch (error) {
-    // 404 is normal for first time visitors
+    // Graceful fallback for offline DB or first time visitors
     return null;
   }
 };

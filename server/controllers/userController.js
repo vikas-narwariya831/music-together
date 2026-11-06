@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const connectDB = require('../config/db');
 
 // POST /api/user/profile - Save/Update user nickname linked to browserId
 const saveUserProfile = async (req, res) => {
@@ -6,6 +8,16 @@ const saveUserProfile = async (req, res) => {
     const { browserId, username } = req.body;
     if (!browserId || !username) {
       return res.status(400).json({ success: false, message: 'browserId and username are required' });
+    }
+
+    await connectDB();
+
+    // If MongoDB is not connected (e.g. missing MONGODB_URI on Vercel), respond immediately
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ 
+        success: false, 
+        message: 'MongoDB not connected. Add MONGODB_URI to Vercel environment variables.' 
+      });
     }
 
     const cleanName = username.trim();
@@ -24,8 +36,8 @@ const saveUserProfile = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error saving user profile:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error saving user profile:', error.message);
+    res.status(200).json({ success: false, message: error.message });
   }
 };
 
@@ -37,9 +49,19 @@ const getUserProfile = async (req, res) => {
       return res.status(400).json({ success: false, message: 'browserId required' });
     }
 
+    await connectDB();
+
+    // If MongoDB is not connected, respond immediately without hanging for 10s!
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ 
+        success: false, 
+        message: 'MongoDB not connected on host' 
+      });
+    }
+
     const user = await User.findOne({ userId: browserId });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found in DB' });
+      return res.json({ success: false, message: 'User not found in DB' });
     }
 
     res.json({
@@ -51,8 +73,8 @@ const getUserProfile = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching user profile:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.warn('Error fetching user profile:', error.message);
+    res.status(200).json({ success: false, message: error.message });
   }
 };
 
