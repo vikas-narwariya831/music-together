@@ -13,6 +13,8 @@ const MessageSchema = new mongoose.Schema({
   time: { type: String },
   isSystem: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now, index: true }
+}, {
+  bufferCommands: false
 });
 
 module.exports = mongoose.model('Message', MessageSchema);

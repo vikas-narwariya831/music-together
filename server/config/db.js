@@ -6,6 +6,9 @@ try {
   dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 } catch (e) {}
 
+// Globally disable query buffering across all models so Vercel never hangs for 10s!
+mongoose.set('bufferCommands', false);
+
 let cachedPromise = null;
 
 const connectDB = async () => {

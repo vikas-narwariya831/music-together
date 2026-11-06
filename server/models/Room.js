@@ -26,6 +26,8 @@ const RoomSchema = new mongoose.Schema({
   currentTrackIndex: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   lastActive: { type: Date, default: Date.now }
+}, {
+  bufferCommands: false
 });
 
 module.exports = mongoose.model('Room', RoomSchema);

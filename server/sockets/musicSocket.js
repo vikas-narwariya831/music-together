@@ -39,7 +39,7 @@ function registerSocketHandlers(io) {
       User.findOneAndUpdate(
         { userId: uid },
         { username: uname, lastSeen: new Date() },
-        { upsert: true, new: true }
+        { upsert: true, returnDocument: 'after' }
       ).catch((err) => console.warn('[MongoDB User Handshake Error]:', err.message));
 
       next();
@@ -97,7 +97,7 @@ function registerSocketHandlers(io) {
         await User.findOneAndUpdate(
           { userId: uid },
           { username: cleanName, lastSeen: new Date() },
-          { upsert: true, new: true }
+          { upsert: true, returnDocument: 'after' }
         );
         socket.username = cleanName;
         socket.emit('profile_saved', {

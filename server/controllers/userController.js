@@ -24,7 +24,7 @@ const saveUserProfile = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { userId: browserId },
       { username: cleanName, lastSeen: new Date() },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     res.json({
