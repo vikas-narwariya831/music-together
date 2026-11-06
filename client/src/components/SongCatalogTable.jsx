@@ -306,28 +306,48 @@ export default function SongCatalogTable({
           ) : (
             playlist.map((track, idx) => {
               const isCurrent = idx === currentTrackIndex;
+              // Use stable unique key: videoId (YouTube) → src (MP3) → id → fallback to title+idx
+              const stableKey = track.videoId || track.src || track.id || `${track.title}-${idx}`;
               return (
                 <div
-                  key={track.id || idx}
-                  onClick={() => onSelectTrack(idx)}
+                  key={stableKey}
+                  onClick={() => {
+                    if (isCurrent) {
+                      onTogglePlay();
+                    } else {
+                      onSelectTrack(idx);
+                    }
+                  }}
                   className={`flex items-center px-4 md:px-6 py-3 text-xs transition-colors cursor-pointer group ${
                     isCurrent 
                       ? 'bg-white/[0.08] text-white font-medium' 
                       : 'text-zinc-300 hover:bg-white/[0.06] hover:text-white'
                   }`}
                 >
-                  {/* Index / Play indicator */}
+                  {/* Index / Play / Pause indicator */}
                   <div className="w-8 shrink-0 flex items-center justify-center text-zinc-500">
-                    {isCurrent && isPlaying ? (
-                      <div className="flex items-end gap-0.5 h-3">
-                        <span className="w-0.5 h-full bg-rose-500 animate-[pulse_0.6s_ease-in-out_infinite]" />
-                        <span className="w-0.5 h-2/3 bg-rose-500 animate-[pulse_0.8s_ease-in-out_infinite]" />
-                        <span className="w-0.5 h-4/5 bg-rose-500 animate-[pulse_0.5s_ease-in-out_infinite]" />
-                      </div>
+                    {isCurrent ? (
+                      isPlaying ? (
+                        <>
+                          <div className="flex items-end gap-0.5 h-3 group-hover:hidden">
+                            <span className="w-0.5 h-full bg-rose-500 animate-[pulse_0.6s_ease-in-out_infinite]" />
+                            <span className="w-0.5 h-2/3 bg-rose-500 animate-[pulse_0.8s_ease-in-out_infinite]" />
+                            <span className="w-0.5 h-4/5 bg-rose-500 animate-[pulse_0.5s_ease-in-out_infinite]" />
+                          </div>
+                          <Pause size={14} className="hidden group-hover:block text-rose-400" fill="currentColor" />
+                        </>
+                      ) : (
+                        <>
+                          <span className="group-hover:hidden text-rose-400 font-bold">{idx + 1}</span>
+                          <Play size={14} className="hidden group-hover:block text-rose-400 ml-0.5" fill="currentColor" />
+                        </>
+                      )
                     ) : (
-                      <span className="group-hover:hidden">{idx + 1}</span>
+                      <>
+                        <span className="group-hover:hidden">{idx + 1}</span>
+                        <Play size={14} className="hidden group-hover:block text-white ml-0.5" fill="currentColor" />
+                      </>
                     )}
-                    <Play size={14} className="hidden group-hover:block text-white ml-0.5" fill="currentColor" />
                   </div>
 
                   {/* Title & Album Art */}

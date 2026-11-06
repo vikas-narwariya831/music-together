@@ -26,14 +26,24 @@ export const searchFullSongs = async (query = 'Arijit Singh') => {
 
 // Fetch all active rooms
 export const fetchActiveRooms = async () => {
-  const response = await api.get('/rooms');
-  return response.data;
+  try {
+    const response = await api.get('/rooms');
+    return response.data?.rooms || response.data || [];
+  } catch (error) {
+    console.warn('fetchActiveRooms error:', error.message);
+    return [];
+  }
 };
 
 // Fetch specific room status
 export const fetchRoomDetails = async (roomId) => {
-  const response = await api.get(`/rooms/${roomId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/rooms/${roomId}`);
+    return response.data;
+  } catch (error) {
+    console.warn(`fetchRoomDetails error for room ${roomId}:`, error.message);
+    return null;
+  }
 };
 
 // Apple iTunes Search API (Backup 30s preview)

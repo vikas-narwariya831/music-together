@@ -221,6 +221,7 @@ function registerSocketHandlers(io) {
           io.to(normalizedRoomId).emit('room_closed', {
             message: `Host (${leavingMember.name}) has ended the Jam Room. Session closed.`
           });
+          io.in(normalizedRoomId).socketsLeave(normalizedRoomId);
           rooms.delete(normalizedRoomId);
           return;
         }
@@ -259,6 +260,7 @@ function registerSocketHandlers(io) {
             io.to(roomId).emit('room_closed', {
               message: `Host (${leavingMember.name}) disconnected. Jam room closed.`
             });
+            io.in(roomId).socketsLeave(roomId);
             rooms.delete(roomId);
             return;
           }

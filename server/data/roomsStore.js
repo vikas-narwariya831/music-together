@@ -1,35 +1,43 @@
 const DEFAULT_TRACKS = [
   {
-    id: 'track-1',
-    title: 'Sunny Days - Acoustic Chill',
-    artist: 'Bensound',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    duration: 372,
-    cover: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80'
+    id: "yt-O5gwxm3NxFU",
+    title: "Best Of Arijit Singh 2024 | Arijit Singh Hits Songs",
+    artist: "Arijit Singh",
+    src: "https://youtube.com/watch?v=O5gwxm3NxFU",
+    videoId: "O5gwxm3NxFU",
+    duration: 3652,
+    cover: "https://i.ytimg.com/vi/O5gwxm3NxFU/hq720.jpg",
+    isYouTube: true
   },
   {
-    id: 'track-2',
-    title: 'Neon Groove - Synthwave',
-    artist: 'SoundHelix Collective',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    duration: 423,
-    cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=80'
+    id: "yt-BPZkZpGMpXA",
+    title: "Tu Mil Jaaye | Shah Rukh Khan | Arijit Singh",
+    artist: "Arijit Singh",
+    src: "https://youtube.com/watch?v=BPZkZpGMpXA",
+    videoId: "BPZkZpGMpXA",
+    duration: 223,
+    cover: "https://i.ytimg.com/vi/BPZkZpGMpXA/hq720.jpg",
+    isYouTube: true
   },
   {
-    id: 'track-3',
-    title: 'Midnight Lo-Fi Beat',
-    artist: 'Chillout Crew',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    duration: 345,
-    cover: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&q=80'
+    id: "yt-MJyKN-8UncM",
+    title: "Shayad - Love Aaj Kal | Arijit Singh",
+    artist: "Arijit Singh",
+    src: "https://youtube.com/watch?v=MJyKN-8UncM",
+    videoId: "MJyKN-8UncM",
+    duration: 190,
+    cover: "https://i.ytimg.com/vi/MJyKN-8UncM/hq720.jpg",
+    isYouTube: true
   },
   {
-    id: 'track-4',
-    title: 'Sunset Electronic Voyage',
-    artist: 'Aero Echo',
-    src: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-    duration: 302,
-    cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=80'
+    id: "yt-aNToVeBBKn4",
+    title: "Aashiqui 2: Aasan Nahin Yahan | Arijit Singh",
+    artist: "Arijit Singh",
+    src: "https://youtube.com/watch?v=aNToVeBBKn4",
+    videoId: "aNToVeBBKn4",
+    duration: 215,
+    cover: "https://i.ytimg.com/vi/aNToVeBBKn4/hq720.jpg",
+    isYouTube: true
   }
 ];
 

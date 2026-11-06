@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { io } from 'socket.io-client';
 import { fetchActiveRooms, searchFullSongs, searchITunesSongs } from './api/musicApi';
 import { detectTrackMood } from './utils/visualizerIntelligence';
 import audioCoordinator from './utils/audioCoordinator';
+import socket from './utils/socketClient';
 
 // Components
 import Header from './components/Header';
@@ -20,7 +20,8 @@ import './App.css';
 const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app';
 
 function App() {
-  const [socket, setSocket] = useState(null);
+  // Global persistent socket state
+  const [isSocketConnected, setIsSocketConnected] = useState(socket.connected);
 
   // Auto-generate guest username or pull from localStorage (Default: Vikas)
   const [username, setUsername] = useState(() => {
@@ -30,7 +31,6 @@ function App() {
   // Jam Session state
   const [roomId, setRoomId] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [activeRooms, setActiveRooms] = useState([]);
   const [members, setMembers] = useState([]);
 
@@ -60,6 +60,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [roomClosedToast, setRoomClosedToast] = useState(''); // replaces native alert()
 
   // Custom MP3 song form
   const [customTitle, setCustomTitle] = useState('');
@@ -71,6 +72,8 @@ function App() {
   const ytAudioBridgeRef = useRef(null);
   const isSyncingRef = useRef(false);
   const chatBottomRef = useRef(null);
+  const lastLoadedSrcRef = useRef(''); // tracks the last imperatively-loaded MP3 src
+  const lastAutoAdvanceRef = useRef(0); // prevents double auto-skip on song end
 
   // Register HTML5 audio with coordinator once available
   useEffect(() => {
@@ -79,73 +82,71 @@ function App() {
     }
   }, []);
 
-  // 1. Initial Socket Connection & Auto-Join URL Room Parameter (?room=xyz)
+  // Refs for roomId and username used in socket handlers (avoid stale closures without re-registering)
+  const roomIdRef = useRef('');
+  const usernameRef = useRef(username);
+  useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
+  useEffect(() => { usernameRef.current = username; }, [username]);
+
+  // 1. Hook into Global Singleton Socket & Auto-Join URL Room Parameter (?room=xyz)
   useEffect(() => {
-    // Determine backend socket url: local first, then deployed
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const serverUrl = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app');
-
-    const s = io(serverUrl, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 3000,
-      randomizationFactor: 0.3,
-      timeout: 10000,
-      autoConnect: true
-    });
-    setSocket(s);
-
-    s.on('connect', () => {
+    const handleConnect = () => {
       console.log('⚡ Connected to Music Together WebSocket server');
       setIsSocketConnected(true);
       refreshRoomsList();
 
-      // Check if URL contains ?room=room-code
       const searchParams = new URLSearchParams(window.location.search);
       const urlRoom = searchParams.get('room');
-      const targetRoom = urlRoom ? urlRoom.trim().toLowerCase() : roomId;
+      const targetRoom = urlRoom ? urlRoom.trim().toLowerCase() : roomIdRef.current;
       if (targetRoom) {
         console.log(`🔗 Auto-joining room: ${targetRoom}`);
         setRoomId(targetRoom);
         setIsSessionActive(true);
-        s.emit('join_room', {
+        socket.emit('join_room', {
           roomId: targetRoom,
-          username: username
+          username: usernameRef.current
         });
       }
-    });
+    };
 
-    s.io.on('reconnect', () => {
-      console.log('⚡ Socket successfully reconnected!');
-      setIsSocketConnected(true);
-      if (roomId) {
-        s.emit('join_room', {
-          roomId: roomId.trim().toLowerCase(),
-          username: username
-        });
-      }
-    });
-
-    s.on('disconnect', (reason) => {
+    const handleDisconnect = (reason) => {
       console.warn('Socket disconnected:', reason);
       setIsSocketConnected(false);
-      // Auto-reconnect on disconnect
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        s.connect();
-      }
-    });
+    };
 
-    s.on('connect_error', (err) => {
+    const handleConnectError = (err) => {
       console.warn('Socket connection error:', err.message);
       setIsSocketConnected(false);
-    });
+    };
+
+    const handleReconnect = () => {
+      console.log('⚡ Socket successfully reconnected!');
+      setIsSocketConnected(true);
+      if (roomIdRef.current) {
+        socket.emit('join_room', {
+          roomId: roomIdRef.current.trim().toLowerCase(),
+          username: usernameRef.current
+        });
+      }
+    };
+
+    // If socket is already connected when component mounts
+    if (socket.connected) {
+      handleConnect();
+    }
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+    socket.io.on('reconnect', handleReconnect);
 
     return () => {
-      s.disconnect();
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+      socket.io.off('reconnect', handleReconnect);
     };
-  }, []);
+  }, []); // ✅ Empty deps — uses refs to read latest roomId/username without stale closures
 
   // 2. Fetch Initial Songs
   useEffect(() => {
@@ -233,6 +234,14 @@ function App() {
     socket.on('sync_pause_state', ({ currentTime: time }) => {
       setIsPlaying(false);
       setCurrentTime(time);
+      if (ytAudioBridgeRef.current) {
+        if (typeof ytAudioBridgeRef.current.seekTo === 'function') {
+          ytAudioBridgeRef.current.seekTo(time);
+        }
+        if (typeof ytAudioBridgeRef.current.pause === 'function') {
+          ytAudioBridgeRef.current.pause();
+        }
+      }
       if (audioRef.current) {
         isSyncingRef.current = true;
         audioRef.current.currentTime = time;
@@ -255,6 +264,7 @@ function App() {
 
     socket.on('track_changed', ({ currentTrackIndex: idx, isPlaying: playing, currentTime: time }) => {
       console.log('⚡ Socket track_changed received:', idx);
+
       // Hard stop any ongoing playback to prevent overlap
       audioCoordinator.stopAll();
 
@@ -262,37 +272,42 @@ function App() {
       setIsPlaying(playing);
       setCurrentTime(time || 0);
 
-      const targetTrack = playlist[idx];
-      if (targetTrack) {
-        audioCoordinator.prepareTrack(targetTrack);
-      }
+      // Use functional updater to access latest playlist without stale closure
+      setPlaylist(prevPlaylist => {
+        const targetTrack = prevPlaylist[idx];
+        if (targetTrack) {
+          audioCoordinator.prepareTrack(targetTrack);
+        }
 
-      if (targetTrack?.isYouTube) {
-        if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
-          ytAudioBridgeRef.current.seekTo(time || 0);
-          if (playing && typeof ytAudioBridgeRef.current.play === 'function') {
-            ytAudioBridgeRef.current.play();
-          }
-        }
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }
-      } else {
-        if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
-          ytAudioBridgeRef.current.stop();
-        }
-        if (audioRef.current) {
-          isSyncingRef.current = true;
-          audioRef.current.currentTime = time || 0;
-          if (playing) {
-            audioRef.current.play().catch(console.error);
-          } else {
+        if (targetTrack?.isYouTube) {
+          // For YouTube: just stop HTML5 audio and let isPlaying + videoId props drive the bridge
+          if (audioRef.current) {
             audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current.removeAttribute('src');
           }
-          setTimeout(() => { isSyncingRef.current = false; }, 300);
+          // DO NOT call ytAudioBridgeRef.current.play() here directly!
+          // YouTubeAudioBridge useEffect([videoId]) + useEffect([isPlaying]) handles it with delays
+        } else {
+          // For MP3: stop YT, then set HTML5 audio src imperatively
+          if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
+            ytAudioBridgeRef.current.stop();
+          }
+          if (audioRef.current && targetTrack?.src) {
+            isSyncingRef.current = true;
+            audioRef.current.pause();
+            audioRef.current.src = targetTrack.src;
+            lastLoadedSrcRef.current = targetTrack.src;
+            audioRef.current.currentTime = time || 0;
+            audioRef.current.load();
+            if (playing) {
+              audioRef.current.play().catch(console.error);
+            }
+            setTimeout(() => { isSyncingRef.current = false; }, 300);
+          }
         }
-      }
+        return prevPlaylist; // Don't mutate, just read
+      });
     });
 
     socket.on('playlist_updated', (newPlaylist) => {
@@ -315,7 +330,9 @@ function App() {
       setMessages([]);
       window.history.replaceState({}, document.title, window.location.pathname);
       refreshRoomsList();
-      alert(message || 'The host has ended the Jam room session.');
+      setRoomClosedToast(message || 'The host has ended the Jam room session.');
+      // Auto-dismiss toast after 6 seconds
+      setTimeout(() => setRoomClosedToast(''), 6000);
     });
 
     return () => {
@@ -329,7 +346,7 @@ function App() {
       socket.off('new_message');
       socket.off('room_closed');
     };
-  }, [socket]);
+  }, []);
 
   const refreshRoomsList = async () => {
     const rooms = await fetchActiveRooms();
@@ -391,8 +408,10 @@ function App() {
     // 2. Native MP3 Audio Play/Pause
     else if (audioRef.current && currentSong?.src) {
       if (nextState) {
-        if (!audioRef.current.src || audioRef.current.src !== currentSong?.src) {
+        // Check via our ref (not browser-resolved audioRef.current.src) to avoid false mismatch
+        if (lastLoadedSrcRef.current !== currentSong.src) {
           audioRef.current.src = currentSong.src;
+          lastLoadedSrcRef.current = currentSong.src;
           audioRef.current.load();
         }
         audioRef.current.play().then(() => {
@@ -431,25 +450,28 @@ function App() {
     if (track?.duration) setDuration(track.duration);
 
     if (track?.isYouTube) {
-      setIsPlaying(true);
-      if (ytAudioBridgeRef.current) {
-        if (typeof ytAudioBridgeRef.current.seekTo === 'function') {
-          ytAudioBridgeRef.current.seekTo(0);
-        }
-        if (typeof ytAudioBridgeRef.current.play === 'function') {
-          ytAudioBridgeRef.current.play();
-        }
-      }
+      // Stop HTML5 audio immediately
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+        audioRef.current.removeAttribute('src');
       }
-    } else if (audioRef.current && track?.src) {
+      // Stop any old YT stream first
       if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
         ytAudioBridgeRef.current.stop();
       }
+      setIsPlaying(true);
+      // Let React re-render with new videoId prop → YouTubeAudioBridge useEffect will handle loading
+    } else if (audioRef.current && track?.src) {
+      // Stop YouTube first
+      if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
+        ytAudioBridgeRef.current.stop();
+      }
+      // Fully reset audio element imperatively
+      audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.src = track.src;
+      lastLoadedSrcRef.current = track.src;
       audioRef.current.load();
       audioRef.current.play().then(() => {
         setIsPlaying(true);
@@ -557,6 +579,20 @@ function App() {
   };
 
   const onEnded = () => {
+    const now = Date.now();
+    // Guard: Prevent double-skipping if onEnded fires multiple times within 2 seconds
+    if (now - lastAutoAdvanceRef.current < 2000) return;
+    lastAutoAdvanceRef.current = now;
+
+    // In a multi-user Jam session, let the host advance the track so friends don't collide
+    if (isSessionActive && members.length > 1) {
+      const isMeHost = members.some(m => m.id === socket?.id && m.isHost);
+      if (!isMeHost) {
+        console.log('[Sync] Non-host waiting for host to advance track...');
+        return;
+      }
+    }
+
     handleNextTrack();
   };
 
@@ -670,11 +706,11 @@ function App() {
         className={`fixed top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-gradient-to-tr ${ambientGlows.accent} blur-[150px] pointer-events-none transition-all duration-1000 opacity-60`} 
       />
 
-      {/* 100% Reliable Native Audio Element for Direct MP3 streams */}
+      {/* Uncontrolled Native Audio — src is NEVER set via React prop to prevent ghost overlap.
+          We imperatively control it only via audioRef in handleSelectTrack */}
       <audio
         ref={audioRef}
-        src={!currentTrack?.isYouTube ? currentTrack?.src : undefined}
-        preload="auto"
+        preload="none"
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         onWaiting={() => setIsBuffering(true)}
@@ -692,11 +728,11 @@ function App() {
         isMuted={isMuted}
         onProgress={(curr) => setCurrentTime(curr)}
         onDuration={(dur) => setDuration(dur)}
-        onEnded={handleNextTrack}
+        onEnded={onEnded}
         onBuffering={(buf) => setIsBuffering(buf)}
         onError={(errCode) => {
           console.warn(`YouTube stream error ${errCode} on ${currentTrack?.title}. Auto-skipping to next playable track...`);
-          handleNextTrack();
+          onEnded();
         }}
       />
 
@@ -834,6 +870,25 @@ function App() {
         currentName={username}
         onSaveName={handleUpdateNickname}
       />
+
+      {/* Room Closed Toast Notification (replaces native alert) */}
+      {roomClosedToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-start gap-3 max-w-sm w-full mx-4 px-5 py-4 rounded-2xl bg-zinc-900/95 border border-rose-500/40 backdrop-blur-2xl shadow-2xl shadow-rose-900/30 animate-[fadeInDown_0.3s_ease]">
+          <div className="shrink-0 w-9 h-9 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+            <span className="text-rose-400 text-lg">🎧</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white leading-tight">Jam Room Closed</p>
+            <p className="text-xs text-zinc-400 mt-0.5 leading-snug">{roomClosedToast}</p>
+          </div>
+          <button
+            onClick={() => setRoomClosedToast('')}
+            className="shrink-0 text-zinc-500 hover:text-white transition-colors text-lg leading-none cursor-pointer mt-0.5"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

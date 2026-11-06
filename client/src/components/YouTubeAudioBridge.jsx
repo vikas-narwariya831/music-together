@@ -38,8 +38,37 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
           playerRef.current.stopVideo();
         } catch (e) {}
       }
+    },
+    getCurrentTime: () => {
+      if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
+        try {
+          return playerRef.current.getCurrentTime();
+        } catch (e) {}
+      }
+      return 0;
+    },
+    getDuration: () => {
+      if (playerRef.current && typeof playerRef.current.getDuration === 'function') {
+        try {
+          return playerRef.current.getDuration();
+        } catch (e) {}
+      }
+      return 0;
     }
   }));
+
+  // Cleanup player completely on component unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (playerRef.current) {
+          playerRef.current.stopVideo?.();
+          playerRef.current.destroy?.();
+          playerRef.current = null;
+        }
+      } catch (e) {}
+    };
+  }, []);
 
   useEffect(() => {
     if (!videoId) {
@@ -66,17 +95,36 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
           currentVideoIdRef.current = videoId;
           console.log(`[YouTubeAudioBridge] 🔄 Switching to track: ${videoId}`);
           try {
+            // 1. Hard stop & clear the old video first
             playerRef.current.stopVideo();
-            playerRef.current.clearVideo?.();
-            playerRef.current.loadVideoById({
-              videoId: videoId,
-              startSeconds: 0
-            });
-            if (isPlaying) {
-              playerRef.current.playVideo();
-            } else {
-              playerRef.current.pauseVideo();
-            }
+            playerRef.current.pauseVideo();
+
+            // 2. Small delay to let browser flush the old stream before loading new
+            setTimeout(() => {
+              if (!playerRef.current) return;
+              try {
+                playerRef.current.loadVideoById({
+                  videoId: videoId,
+                  startSeconds: 0
+                });
+                // Start playing only after load
+                setTimeout(() => {
+                  if (!playerRef.current) return;
+                  if (isPlaying) {
+                    if (!isMuted) {
+                      playerRef.current.unMute?.();
+                    } else {
+                      playerRef.current.mute?.();
+                    }
+                    playerRef.current.playVideo();
+                  } else {
+                    playerRef.current.pauseVideo();
+                  }
+                }, 150);
+              } catch (innerErr) {
+                console.warn('[YouTubeAudioBridge] loadVideoById error:', innerErr);
+              }
+            }, 80);
           } catch (err) {
             console.warn('[YouTubeAudioBridge] Switch error:', err);
           }
@@ -110,7 +158,11 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
             }
 
             if (isPlaying) {
-              event.target.unMute();
+              if (!isMuted) {
+                event.target.unMute();
+              } else {
+                event.target.mute();
+              }
               event.target.playVideo();
             } else {
               event.target.pauseVideo();

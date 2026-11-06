@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Sparkles, X, Check } from 'lucide-react';
 
 export default function NicknameModal({
@@ -8,6 +8,13 @@ export default function NicknameModal({
   onSaveName
 }) {
   const [nickname, setNickname] = useState(currentName);
+
+  // Sync local input whenever the modal is opened or currentName changes
+  useEffect(() => {
+    if (isOpen) {
+      setNickname(currentName || '');
+    }
+  }, [isOpen, currentName]);
 
   if (!isOpen) return null;
 
