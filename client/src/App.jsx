@@ -15,7 +15,7 @@ import YouTubeAudioBridge from './components/YouTubeAudioBridge';
 
 import './App.css';
 
-const SOCKET_SERVER_URL = 'http://localhost:5000';
+const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app';
 
 function App() {
   const [socket, setSocket] = useState(null);
