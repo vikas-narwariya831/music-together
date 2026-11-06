@@ -254,6 +254,14 @@ function App() {
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const leaveJamSession = () => {
+    setIsSessionActive(false);
+    setRoomId('');
+    setMembers([]);
+    setMessages([]);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
   const togglePlay = () => {
     const nextState = !isPlaying;
     const currentSong = playlist[currentTrackIndex];
