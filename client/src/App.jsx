@@ -29,6 +29,7 @@ function App() {
   // Jam Session state
   const [roomId, setRoomId] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
+  const [isSocketConnected, setIsSocketConnected] = useState(false);
   const [activeRooms, setActiveRooms] = useState([]);
   const [members, setMembers] = useState([]);
 
@@ -77,6 +78,7 @@ function App() {
 
     s.on('connect', () => {
       console.log('⚡ Connected to Music Together WebSocket server');
+      setIsSocketConnected(true);
       refreshRoomsList();
 
       // Check if URL contains ?room=room-code
@@ -92,6 +94,10 @@ function App() {
           username: username
         });
       }
+    });
+
+    s.on('disconnect', () => {
+      setIsSocketConnected(false);
     });
 
     return () => {
@@ -606,6 +612,7 @@ function App() {
         username={username}
         setUsername={setUsername}
         isSessionActive={isSessionActive}
+        isSocketConnected={isSocketConnected}
         roomId={roomId}
         members={members}
         copied={copied}

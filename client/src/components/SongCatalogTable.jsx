@@ -66,18 +66,18 @@ export default function SongCatalogTable({
             />
           </div>
 
-          <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start lg:items-center gap-6 md:gap-8">
+          <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start lg:items-center gap-4 sm:gap-6 md:gap-8">
             {/* Pure Circular Spinning Vinyl Cassette Record + Gramophone Tonearm */}
-            <div className="relative shrink-0 flex items-center justify-center py-2 pr-6 sm:pr-8">
+            <div className="relative shrink-0 flex items-center justify-center py-2 pr-4 sm:pr-8">
               {/* Spinning Vinyl Cassette Record with embedded Artwork */}
               <div 
-                className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-60 md:h-60 rounded-full border-4 border-zinc-900/90 bg-zinc-950 shadow-[0_15px_45px_rgba(0,0,0,0.95)] flex items-center justify-center ring-2 ring-white/20 transition-all duration-700 ${
+                className={`relative w-40 h-40 sm:w-52 sm:h-52 md:w-60 md:h-60 rounded-full border-4 border-zinc-900/90 bg-zinc-950 shadow-[0_15px_45px_rgba(0,0,0,0.95)] flex items-center justify-center ring-2 ring-white/20 transition-all duration-700 ${
                   isPlaying || isBuffering ? 'shadow-[0_0_50px_rgba(244,63,94,0.35)] ring-white/30' : ''
                 }`}
               >
                 {/* Vinyl Grooves Texture - Spins on isPlaying OR isBuffering */}
                 <div 
-                  className={`w-full h-full rounded-full flex items-center justify-center bg-[repeating-radial-gradient(circle,#18181b_0,#18181b_4px,#27272a_5px,#09090b_8px)] p-7 sm:p-8 md:p-9 shadow-inner ${
+                  className={`w-full h-full rounded-full flex items-center justify-center bg-[repeating-radial-gradient(circle,#18181b_0,#18181b_4px,#27272a_5px,#09090b_8px)] p-5 sm:p-7 md:p-9 shadow-inner ${
                     isPlaying || isBuffering ? 'animate-[spin_4s_linear_infinite]' : ''
                   }`}
                 >
@@ -95,14 +95,14 @@ export default function SongCatalogTable({
                     {/* Live Loading Spinner Overlay inside Vinyl when buffering */}
                     {isBuffering && (
                       <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-10">
-                        <Loader2 className="animate-spin text-white drop-shadow-md" size={32} />
+                        <Loader2 className="animate-spin text-white drop-shadow-md" size={26} />
                       </div>
                     )}
                     
                     {/* Vinyl Center Spindle & Mood Glow Ring */}
-                    <div className="absolute inset-0 m-auto w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-zinc-950/90 border-2 border-white/50 backdrop-blur-md shadow-2xl flex items-center justify-center z-10">
+                    <div className="absolute inset-0 m-auto w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-zinc-950/90 border-2 border-white/50 backdrop-blur-md shadow-2xl flex items-center justify-center z-10">
                       <div 
-                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-white/70 shadow-inner flex items-center justify-center transition-colors duration-700"
+                        className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full border border-white/70 shadow-inner flex items-center justify-center transition-colors duration-700"
                         style={{ backgroundColor: moodProfile?.colors?.[0] || '#f43f5e' }}
                       >
                         <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
@@ -112,16 +112,16 @@ export default function SongCatalogTable({
                 </div>
 
                 {/* Status Glass Badge */}
-                <div className="absolute z-20 -bottom-2 px-3 py-1 rounded-full bg-zinc-950/90 backdrop-blur-xl border border-white/20 text-[10px] font-bold tracking-wider text-zinc-100 flex items-center gap-1.5 shadow-xl">
+                <div className="absolute z-20 -bottom-2 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-zinc-950/90 backdrop-blur-xl border border-white/20 text-[9px] sm:text-[10px] font-bold tracking-wider text-zinc-100 flex items-center gap-1.5 shadow-xl">
                   {isBuffering ? (
                     <>
-                      <Loader2 size={12} className="animate-spin text-amber-400" />
+                      <Loader2 size={11} className="animate-spin text-amber-400" />
                       <span className="text-amber-300">LOADING...</span>
                     </>
                   ) : (
                     <>
                       <span 
-                        className={`w-2 h-2 rounded-full ${isPlaying ? 'animate-pulse' : 'bg-zinc-500'}`} 
+                        className={`w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full ${isPlaying ? 'animate-pulse' : 'bg-zinc-500'}`} 
                         style={{ backgroundColor: isPlaying ? (moodProfile?.colors?.[0] || '#f43f5e') : undefined }}
                       />
                       <span>{isPlaying ? 'PLAYING' : 'READY'}</span>
@@ -134,13 +134,13 @@ export default function SongCatalogTable({
               <div 
                 onClick={onTogglePlay}
                 title={isPlaying ? 'Click Tonearm to Pause' : 'Click Tonearm to Play'}
-                className="absolute -top-3 right-0 sm:right-1 md:right-2 z-30 cursor-pointer group select-none pointer-events-auto"
+                className="absolute -top-3 -right-1 sm:right-0 z-30 cursor-pointer group select-none pointer-events-auto"
               >
                 {/* Arm Base Pivot / Bearing - Frosted Glass Disc */}
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 backdrop-blur-2xl shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center ring-1 ring-white/10 relative transition-all">
+                <div className="w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/20 backdrop-blur-2xl shadow-[0_8px_20px_rgba(0,0,0,0.6)] flex items-center justify-center ring-1 ring-white/10 relative transition-all">
                   {/* Center Pivot Gem with Mood Color */}
                   <div 
-                    className="w-4 h-4 rounded-full border border-white/40 shadow-inner transition-colors duration-700 flex items-center justify-center"
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border border-white/40 shadow-inner transition-colors duration-700 flex items-center justify-center"
                     style={{ backgroundColor: `${moodProfile?.colors?.[0] || '#f43f5e'}44` }}
                   >
                     <div 
@@ -151,31 +151,31 @@ export default function SongCatalogTable({
                   
                   {/* Swiveling Acrylic Arm + Cartridge Head */}
                   <div 
-                    className="absolute top-4 left-4 sm:top-5 sm:left-5 origin-[5px_5px] transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    className="absolute top-3 left-3 sm:top-5 sm:left-5 origin-[4px_4px] transition-transform duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                     style={{
                       transform: isPlaying ? 'rotate(32deg)' : 'rotate(-18deg)'
                     }}
                   >
                     {/* Glassmorphic Acrylic Stylus Arm */}
-                    <div className="w-2 sm:w-2.5 h-28 sm:h-32 md:h-36 bg-gradient-to-b from-white/30 via-white/10 to-white/20 backdrop-blur-xl rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.7)] border border-white/30 relative">
+                    <div className="w-1.5 sm:w-2.5 h-24 sm:h-32 md:h-36 bg-gradient-to-b from-white/30 via-white/10 to-white/20 backdrop-blur-xl rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.7)] border border-white/30 relative">
                       {/* Frosted Joint Ring */}
                       <div 
-                        className="absolute top-10 left-[-2px] right-[-2px] h-3 rounded-full border border-white/30 transition-colors duration-700 shadow-sm"
+                        className="absolute top-8 sm:top-10 left-[-2px] right-[-2px] h-2.5 sm:h-3 rounded-full border border-white/30 transition-colors duration-700 shadow-sm"
                         style={{ backgroundColor: `${moodProfile?.colors?.[0] || '#f43f5e'}55` }}
                       />
                       
                       {/* Glass Cartridge Head */}
-                      <div className="absolute bottom-[-16px] -left-2.5 w-7 sm:w-8 h-6 rounded-xl bg-zinc-900/90 hover:bg-zinc-800/90 backdrop-blur-2xl border border-white/30 shadow-2xl flex flex-col items-center justify-center rotate-[-12deg] transition-all">
+                      <div className="absolute bottom-[-14px] sm:bottom-[-16px] -left-2 sm:-left-2.5 w-6 sm:w-8 h-5 sm:h-6 rounded-lg sm:rounded-xl bg-zinc-900/90 hover:bg-zinc-800/90 backdrop-blur-2xl border border-white/30 shadow-2xl flex flex-col items-center justify-center rotate-[-12deg] transition-all">
                         {/* Stylus Laser Glow Indicator */}
                         <div 
-                          className="w-2 h-2 rounded-full transition-all duration-500"
+                          className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full transition-all duration-500"
                           style={{
                             backgroundColor: isPlaying ? (moodProfile?.colors?.[0] || '#f43f5e') : 'rgba(255,255,255,0.2)',
                             boxShadow: isPlaying ? `0 0 12px ${moodProfile?.colors?.[0] || '#f43f5e'}, 0 0 20px ${moodProfile?.colors?.[0] || '#f43f5e'}` : 'none'
                           }}
                         />
                         {/* Stylus Needle Needle Tip */}
-                        <div className="w-0.5 h-2 bg-white/70 mt-0.5 rounded-b" />
+                        <div className="w-0.5 h-1.5 sm:h-2 bg-white/70 mt-0.5 rounded-b" />
                       </div>
                     </div>
                   </div>

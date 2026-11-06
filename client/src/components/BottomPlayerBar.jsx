@@ -35,14 +35,14 @@ export default function BottomPlayerBar({
   const volumePercent = Math.round(effectiveVolume * 100);
 
   return (
-    <footer className="h-22 px-4 sm:px-6 md:px-8 shrink-0 border-t border-white/[0.12] bg-white/[0.04] backdrop-blur-3xl flex items-center justify-between gap-4 z-40 select-none shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
+    <footer className="h-20 sm:h-22 px-3 sm:px-6 md:px-8 shrink-0 border-t border-white/[0.12] bg-white/[0.04] backdrop-blur-3xl flex items-center justify-between gap-2 sm:gap-4 z-40 select-none shadow-[0_-12px_40px_rgba(0,0,0,0.6)]">
       {/* 1. Track Info (Glass Card Look) */}
-      <div className="flex items-center gap-3 min-w-0 max-w-[200px] sm:max-w-[240px] md:max-w-[280px] shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 max-w-[130px] sm:max-w-[200px] md:max-w-[260px] shrink-0">
         <div className="relative group shrink-0">
           <img 
             src={currentTrack.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80'} 
             alt={currentTrack.title} 
-            className="w-13 h-13 rounded-2xl object-cover shadow-lg ring-1 ring-white/20" 
+            className="w-10 h-10 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl object-cover shadow-lg ring-1 ring-white/20" 
             onError={(e) => {
               e.target.src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
             }}
@@ -50,17 +50,17 @@ export default function BottomPlayerBar({
         </div>
 
         <div className="flex flex-col min-w-0 pr-1">
-          <span className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer">
+          <span className="text-[11px] sm:text-xs md:text-sm font-semibold text-white truncate hover:underline cursor-pointer">
             {currentTrack.title || 'No Song Selected'}
           </span>
-          <span className="text-[11px] font-medium text-zinc-300 truncate hover:text-white cursor-pointer mt-0.5">
-            {currentTrack.artist || 'Select a track to play'}
+          <span className="text-[10px] sm:text-[11px] font-medium text-zinc-300 truncate hover:text-white cursor-pointer mt-0.5">
+            {currentTrack.artist || 'Select track'}
           </span>
         </div>
 
         <button 
           type="button" 
-          className="text-zinc-400 hover:text-rose-400 transition-colors p-1 shrink-0 hidden sm:block cursor-pointer"
+          className="text-zinc-400 hover:text-rose-400 transition-colors p-1 shrink-0 hidden md:block cursor-pointer"
           title="Favorite"
         >
           <Heart size={16} />
@@ -158,12 +158,12 @@ export default function BottomPlayerBar({
       </div>
 
       {/* 3. Session Status & Glassmorphism Volume Pill with Gradient Fill */}
-      <div className="flex items-center justify-end gap-3.5 shrink-0 max-w-[190px] sm:max-w-[240px]">
+      <div className="flex items-center justify-end gap-2 sm:gap-3.5 shrink-0 max-w-[110px] sm:max-w-[190px] md:max-w-[240px]">
         {isSessionActive && (
           <button 
             type="button"
             onClick={onOpenSessionModal}
-            className="text-xs font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md px-2.5 py-1 rounded-full flex items-center gap-1.5 hover:bg-emerald-500/30 transition-colors cursor-pointer"
+            className="text-[11px] sm:text-xs font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md px-2 sm:px-2.5 py-1 rounded-full flex items-center gap-1.5 hover:bg-emerald-500/30 transition-colors cursor-pointer hidden xs:flex"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="hidden sm:inline">Synced</span>
@@ -171,7 +171,7 @@ export default function BottomPlayerBar({
         )}
 
         {/* Apple Style Glassmorphism Volume Capsule */}
-        <div className="flex items-center gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 px-3.5 py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
           <button 
             type="button" 
             onClick={onToggleMute} 
@@ -179,11 +179,11 @@ export default function BottomPlayerBar({
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || effectiveVolume === 0 ? (
-              <VolumeX size={16} className="text-rose-400" />
+              <VolumeX size={15} className="text-rose-400 sm:w-4 sm:h-4" />
             ) : effectiveVolume < 0.5 ? (
-              <Volume1 size={16} />
+              <Volume1 size={15} className="sm:w-4 sm:h-4" />
             ) : (
-              <Volume2 size={16} />
+              <Volume2 size={15} className="sm:w-4 sm:h-4" />
             )}
           </button>
           
@@ -195,10 +195,10 @@ export default function BottomPlayerBar({
               const ratio = Math.max(0, Math.min(1, clickX / rect.width));
               onVolumeChange({ target: { value: ratio } });
             }}
-            className="relative w-18 sm:w-22 h-3 flex items-center cursor-pointer group"
+            className="relative w-12 sm:w-18 md:w-22 h-3 flex items-center cursor-pointer group"
           >
             {/* Background unfilled glass track */}
-            <div className="w-full h-1.5 group-hover:h-2 rounded-full bg-white/20 overflow-hidden transition-all relative">
+            <div className="w-full h-1 sm:h-1.5 group-hover:h-2 rounded-full bg-white/20 overflow-hidden transition-all relative">
               {/* Active filled volume gradient */}
               <div 
                 className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-75"
@@ -208,13 +208,13 @@ export default function BottomPlayerBar({
 
             {/* Glowing Volume Thumb Knob */}
             <div 
-              className="absolute w-3 h-3 rounded-full bg-white shadow-md shadow-rose-500/40 ring-1 ring-rose-400 -translate-x-1/2 pointer-events-none transition-all"
+              className="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-white shadow-md shadow-rose-500/40 ring-1 ring-rose-400 -translate-x-1/2 pointer-events-none transition-all"
               style={{ left: `${volumePercent}%` }}
             />
           </div>
 
           {/* Real-time Percentage Tag */}
-          <span className="text-[10px] font-mono font-bold text-zinc-200 w-7 text-right select-none hidden xs:inline-block">
+          <span className="text-[10px] font-mono font-bold text-zinc-200 w-6 sm:w-7 text-right select-none hidden sm:inline-block">
             {volumePercent}%
           </span>
         </div>
