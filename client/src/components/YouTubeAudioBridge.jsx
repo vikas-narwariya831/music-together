@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
-  { videoId, isPlaying, volume, isMuted, onProgress, onDuration, onEnded, onBuffering },
+  { videoId, isPlaying, volume, isMuted, onProgress, onDuration, onEnded, onBuffering, onError },
   ref
 ) {
   const playerRef = useRef(null);
@@ -86,6 +86,12 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
               if (onBuffering) onBuffering(false);
               if (onEnded) onEnded();
             }
+          },
+          onError: (event) => {
+            // Error 101/150: The owner does not allow it to be played in embedded players
+            console.warn('YouTube Bridge embed restriction code:', event.data);
+            if (onBuffering) onBuffering(false);
+            if (onError) onError(event.data);
           }
         }
       });

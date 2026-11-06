@@ -525,6 +525,10 @@ function App() {
           onDuration={(dur) => setDuration(dur)}
           onEnded={handleNextTrack}
           onBuffering={(buf) => setIsBuffering(buf)}
+          onError={(errCode) => {
+            console.warn(`YouTube stream error ${errCode} on ${currentTrack.title}. Auto-skipping to next playable track...`);
+            handleNextTrack();
+          }}
         />
       )}
 
