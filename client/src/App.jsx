@@ -104,6 +104,33 @@ function App() {
     handleSearch('Arijit Singh');
   }, []);
 
+  // Global Keyboard Shortcuts (Space for Play/Pause, Arrow Right/Left for Seek, M for Mute)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if user is typing in search, chat, or modal input
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        const nextTime = Math.min(duration, currentTime + 5);
+        handleSeek({ target: { value: nextTime } });
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        const prevTime = Math.max(0, currentTime - 5);
+        handleSeek({ target: { value: prevTime } });
+      } else if (e.key === 'm' || e.key === 'M') {
+        e.preventDefault();
+        toggleMute();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, currentTime, duration, isMuted, playlist, currentTrackIndex]);
+
   // 3. Socket event listeners for real-time room sync
   useEffect(() => {
     if (!socket) return;
