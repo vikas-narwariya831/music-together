@@ -6,6 +6,7 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
 ) {
   const playerRef = useRef(null);
   const intervalRef = useRef(null);
+  const currentVideoIdRef = useRef(null);
 
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
@@ -33,6 +34,13 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
   }));
 
   useEffect(() => {
+    if (!videoId) {
+      if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+        playerRef.current.stopVideo();
+      }
+      return;
+    }
+
     if (!window.YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
@@ -40,24 +48,33 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
 
-    const initPlayer = () => {
-      if (!window.YT || !window.YT.Player || !videoId) return;
+    const initOrSwitchPlayer = () => {
+      if (!window.YT || !window.YT.Player) return;
 
-      // If player already exists, simply load new video instead of creating duplicate iframes!
-      if (playerRef.current) {
-        try {
-          if (typeof playerRef.current.loadVideoById === 'function') {
-            playerRef.current.loadVideoById(videoId);
-            if (!isPlaying) {
+      // If YouTube player is already instantiated, STOP OLD AND LOAD NEW!
+      if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        if (currentVideoIdRef.current !== videoId) {
+          currentVideoIdRef.current = videoId;
+          console.log(`[YouTubeAudioBridge] 🔄 Switching to track: ${videoId}`);
+          try {
+            playerRef.current.stopVideo();
+            playerRef.current.loadVideoById({
+              videoId: videoId,
+              startSeconds: 0
+            });
+            if (isPlaying) {
+              playerRef.current.playVideo();
+            } else {
               playerRef.current.pauseVideo();
             }
-            return;
-          } else {
-            playerRef.current.destroy();
+          } catch (err) {
+            console.warn('[YouTubeAudioBridge] Switch error:', err);
           }
-        } catch (e) {}
+        }
+        return;
       }
 
+      currentVideoIdRef.current = videoId;
       playerRef.current = new window.YT.Player('yt-audio-bridge-div', {
         height: '100%',
         width: '100%',
@@ -81,7 +98,6 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
               event.target.unMute();
             }
 
-            // Only play if isPlaying is true, and ensure audio is unmuted
             if (isPlaying) {
               event.target.unMute();
               event.target.playVideo();
@@ -107,7 +123,6 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
             }
           },
           onError: (event) => {
-            // Error 101/150: The owner does not allow it to be played in embedded players
             console.warn('YouTube Bridge embed restriction code:', event.data);
             if (onBuffering) onBuffering(false);
             if (onError) onError(event.data);
@@ -117,9 +132,9 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
     };
 
     if (window.YT && window.YT.Player) {
-      initPlayer();
+      initOrSwitchPlayer();
     } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
+      window.onYouTubeIframeAPIReady = initOrSwitchPlayer;
     }
 
     intervalRef.current = setInterval(() => {
