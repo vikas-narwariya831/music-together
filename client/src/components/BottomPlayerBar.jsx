@@ -157,21 +157,21 @@ export default function BottomPlayerBar({
         </div>
       </div>
 
-      {/* 3. Session Status & Glassmorphism Volume Pill with Gradient Fill */}
-      <div className="flex items-center justify-end gap-2 sm:gap-3.5 shrink-0 max-w-[110px] sm:max-w-[190px] md:max-w-[240px]">
+      {/* 3. Session Status & Glassmorphism Volume Pill */}
+      <div className="flex items-center justify-end gap-1.5 sm:gap-3.5 shrink-0">
         {isSessionActive && (
           <button 
             type="button"
             onClick={onOpenSessionModal}
-            className="text-[11px] sm:text-xs font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md px-2 sm:px-2.5 py-1 rounded-full flex items-center gap-1.5 hover:bg-emerald-500/30 transition-colors cursor-pointer hidden xs:flex"
+            className="text-[11px] sm:text-xs font-semibold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 backdrop-blur-md px-2 sm:px-2.5 py-1 rounded-full flex items-center gap-1.5 hover:bg-emerald-500/30 transition-colors cursor-pointer hidden md:flex"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden sm:inline">Synced</span>
+            <span>Synced</span>
           </button>
         )}
 
-        {/* Apple Style Glassmorphism Volume Capsule */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
+        {/* Compact Volume Control: Icon toggle on mobile, slider on sm+ screens */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 p-2 sm:px-3.5 sm:py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
           <button 
             type="button" 
             onClick={onToggleMute} 
@@ -179,15 +179,15 @@ export default function BottomPlayerBar({
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || effectiveVolume === 0 ? (
-              <VolumeX size={15} className="text-rose-400 sm:w-4 sm:h-4" />
+              <VolumeX size={16} className="text-rose-400" />
             ) : effectiveVolume < 0.5 ? (
-              <Volume1 size={15} className="sm:w-4 sm:h-4" />
+              <Volume1 size={16} />
             ) : (
-              <Volume2 size={15} className="sm:w-4 sm:h-4" />
+              <Volume2 size={16} />
             )}
           </button>
           
-          {/* Glass Volume Fill Track */}
+          {/* Glass Volume Fill Track (Hidden on tiny mobile to save space, visible sm+) */}
           <div 
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -195,7 +195,7 @@ export default function BottomPlayerBar({
               const ratio = Math.max(0, Math.min(1, clickX / rect.width));
               onVolumeChange({ target: { value: ratio } });
             }}
-            className="relative w-12 sm:w-18 md:w-22 h-3 flex items-center cursor-pointer group"
+            className="hidden sm:flex relative w-14 md:w-20 h-3 items-center cursor-pointer group"
           >
             {/* Background unfilled glass track */}
             <div className="w-full h-1 sm:h-1.5 group-hover:h-2 rounded-full bg-white/20 overflow-hidden transition-all relative">
@@ -214,7 +214,7 @@ export default function BottomPlayerBar({
           </div>
 
           {/* Real-time Percentage Tag */}
-          <span className="text-[10px] font-mono font-bold text-zinc-200 w-6 sm:w-7 text-right select-none hidden sm:inline-block">
+          <span className="text-[10px] font-mono font-bold text-zinc-200 w-6 text-right select-none hidden md:inline-block">
             {volumePercent}%
           </span>
         </div>

@@ -75,12 +75,13 @@ function App() {
     const serverUrl = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app');
 
     const s = io(serverUrl, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+      randomizationFactor: 0.3,
+      timeout: 10000,
       autoConnect: true
     });
     setSocket(s);
@@ -93,13 +94,24 @@ function App() {
       // Check if URL contains ?room=room-code
       const searchParams = new URLSearchParams(window.location.search);
       const urlRoom = searchParams.get('room');
-      if (urlRoom && urlRoom.trim()) {
-        const cleanRoom = urlRoom.trim().toLowerCase();
-        console.log(`🔗 Auto-joining room from URL parameter: ${cleanRoom}`);
-        setRoomId(cleanRoom);
+      const targetRoom = urlRoom ? urlRoom.trim().toLowerCase() : roomId;
+      if (targetRoom) {
+        console.log(`🔗 Auto-joining room: ${targetRoom}`);
+        setRoomId(targetRoom);
         setIsSessionActive(true);
         s.emit('join_room', {
-          roomId: cleanRoom,
+          roomId: targetRoom,
+          username: username
+        });
+      }
+    });
+
+    s.io.on('reconnect', () => {
+      console.log('⚡ Socket successfully reconnected!');
+      setIsSocketConnected(true);
+      if (roomId) {
+        s.emit('join_room', {
+          roomId: roomId.trim().toLowerCase(),
           username: username
         });
       }
