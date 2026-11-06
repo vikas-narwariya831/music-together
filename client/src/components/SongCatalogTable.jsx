@@ -18,6 +18,7 @@ export default function SongCatalogTable({
   currentTrackIndex = 0,
   isPlaying = false,
   isBuffering = false,
+  isSearching = false,
   currentTime = 0,
   onSelectTrack,
   onTogglePlay,
@@ -288,64 +289,80 @@ export default function SongCatalogTable({
 
         {/* Track Rows */}
         <div className="divide-y divide-white/[0.04]">
-          {playlist.map((track, idx) => {
-            const isCurrent = idx === currentTrackIndex;
-            return (
-              <div
-                key={track.id || idx}
-                onClick={() => onSelectTrack(idx)}
-                className={`flex items-center px-4 md:px-6 py-3 text-xs transition-colors cursor-pointer group ${
-                  isCurrent 
-                    ? 'bg-white/[0.08] text-white font-medium' 
-                    : 'text-zinc-300 hover:bg-white/[0.06] hover:text-white'
-                }`}
-              >
-                {/* Index / Play indicator */}
-                <div className="w-8 shrink-0 flex items-center justify-center text-zinc-500">
-                  {isCurrent && isPlaying ? (
-                    <div className="flex items-end gap-0.5 h-3">
-                      <span className="w-0.5 h-full bg-rose-500 animate-[pulse_0.6s_ease-in-out_infinite]" />
-                      <span className="w-0.5 h-2/3 bg-rose-500 animate-[pulse_0.8s_ease-in-out_infinite]" />
-                      <span className="w-0.5 h-4/5 bg-rose-500 animate-[pulse_0.5s_ease-in-out_infinite]" />
-                    </div>
-                  ) : (
-                    <span className="group-hover:hidden">{idx + 1}</span>
-                  )}
-                  <Play size={14} className="hidden group-hover:block text-white ml-0.5" fill="currentColor" />
+          {isSearching && playlist.length === 0 ? (
+            /* Shimmer Skeleton Rows while searching */
+            Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex items-center px-4 md:px-6 py-3.5 gap-4 animate-pulse">
+                <div className="w-8 h-4 rounded bg-white/10 shrink-0" />
+                <div className="w-10 h-10 rounded-xl bg-white/10 shrink-0" />
+                <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                  <div className="h-3.5 bg-white/15 rounded-md w-3/5" />
+                  <div className="h-2.5 bg-white/10 rounded-md w-2/5" />
                 </div>
+                <div className="w-48 hidden sm:block h-3 bg-white/10 rounded-md" />
+                <div className="w-12 h-3 bg-white/10 rounded-md ml-auto" />
+              </div>
+            ))
+          ) : (
+            playlist.map((track, idx) => {
+              const isCurrent = idx === currentTrackIndex;
+              return (
+                <div
+                  key={track.id || idx}
+                  onClick={() => onSelectTrack(idx)}
+                  className={`flex items-center px-4 md:px-6 py-3 text-xs transition-colors cursor-pointer group ${
+                    isCurrent 
+                      ? 'bg-white/[0.08] text-white font-medium' 
+                      : 'text-zinc-300 hover:bg-white/[0.06] hover:text-white'
+                  }`}
+                >
+                  {/* Index / Play indicator */}
+                  <div className="w-8 shrink-0 flex items-center justify-center text-zinc-500">
+                    {isCurrent && isPlaying ? (
+                      <div className="flex items-end gap-0.5 h-3">
+                        <span className="w-0.5 h-full bg-rose-500 animate-[pulse_0.6s_ease-in-out_infinite]" />
+                        <span className="w-0.5 h-2/3 bg-rose-500 animate-[pulse_0.8s_ease-in-out_infinite]" />
+                        <span className="w-0.5 h-4/5 bg-rose-500 animate-[pulse_0.5s_ease-in-out_infinite]" />
+                      </div>
+                    ) : (
+                      <span className="group-hover:hidden">{idx + 1}</span>
+                    )}
+                    <Play size={14} className="hidden group-hover:block text-white ml-0.5" fill="currentColor" />
+                  </div>
 
-                {/* Title & Album Art */}
-                <div className="flex-1 flex items-center gap-3.5 min-w-0 ml-3 pr-2">
-                  <img 
-                    src={track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80'} 
-                    alt={track.title}
-                    className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/15 shrink-0 shadow-sm" 
-                    onError={(e) => {
-                      e.target.src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
-                    }}
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span className={`truncate font-medium text-[13px] ${isCurrent ? 'text-rose-400 font-semibold' : 'text-zinc-100'}`}>
-                      {track.title}
-                    </span>
-                    <span className="text-[11px] text-zinc-400 truncate sm:hidden">
-                      {track.artist}
-                    </span>
+                  {/* Title & Album Art */}
+                  <div className="flex-1 flex items-center gap-3.5 min-w-0 ml-3 pr-2">
+                    <img 
+                      src={track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80'} 
+                      alt={track.title}
+                      className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/15 shrink-0 shadow-sm" 
+                      onError={(e) => {
+                        e.target.src = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
+                      }}
+                    />
+                    <div className="flex flex-col min-w-0">
+                      <span className={`truncate font-medium text-[13px] ${isCurrent ? 'text-rose-400 font-semibold' : 'text-zinc-100'}`}>
+                        {track.title}
+                      </span>
+                      <span className="text-[11px] text-zinc-400 truncate sm:hidden">
+                        {track.artist}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Artist */}
+                  <div className="w-48 sm:w-64 md:w-80 shrink-0 hidden sm:block text-zinc-400 truncate px-3">
+                    {track.artist}
+                  </div>
+
+                  {/* Duration */}
+                  <div className="w-16 shrink-0 text-right text-zinc-400 font-mono text-[11px]">
+                    {formatTime(track.duration || 180)}
                   </div>
                 </div>
-
-                {/* Artist */}
-                <div className="w-48 sm:w-64 md:w-80 shrink-0 hidden sm:block text-zinc-400 truncate px-3">
-                  {track.artist}
-                </div>
-
-                {/* Duration */}
-                <div className="w-16 shrink-0 text-right text-zinc-400 font-mono text-[11px]">
-                  {formatTime(track.duration || 180)}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </div>

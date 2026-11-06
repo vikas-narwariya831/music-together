@@ -539,6 +539,7 @@ function App() {
             currentTrackIndex={currentTrackIndex}
             isPlaying={isPlaying}
             isBuffering={isBuffering}
+            isSearching={isSearching}
             currentTime={currentTime}
             onSelectTrack={handleSelectTrack}
             onTogglePlay={togglePlay}
