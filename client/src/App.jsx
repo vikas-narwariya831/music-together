@@ -107,6 +107,12 @@ function App() {
       setIsSocketConnected(true);
       refreshRoomsList();
 
+      // Verify and register user identity on connect
+      socket.emit('check_user', {
+        userId: userIdRef.current,
+        username: usernameRef.current
+      });
+
       const searchParams = new URLSearchParams(window.location.search);
       const urlRoom = searchParams.get('room');
       const targetRoom = urlRoom ? urlRoom.trim().toLowerCase() : roomIdRef.current;
@@ -135,12 +141,33 @@ function App() {
     const handleReconnect = () => {
       console.log('⚡ Socket successfully reconnected!');
       setIsSocketConnected(true);
+
+      socket.emit('check_user', {
+        userId: userIdRef.current,
+        username: usernameRef.current
+      });
+
       if (roomIdRef.current) {
         socket.emit('join_room', {
           roomId: roomIdRef.current.trim().toLowerCase(),
           username: usernameRef.current,
           userId: userIdRef.current
         });
+      }
+    };
+
+    const handleUserVerified = ({ userId: confirmedUid, username: finalName }) => {
+      console.log(`👤 User verified with server: ID=${confirmedUid}, Name=${finalName}`);
+      if (confirmedUid) {
+        localStorage.setItem('musictogether_uid', confirmedUid);
+      }
+    };
+
+    const handleUsernameAssigned = ({ username: uniqueName }) => {
+      console.log(`🏷️ Server resolved unique room name: ${uniqueName}`);
+      if (uniqueName) {
+        setUsername(uniqueName);
+        localStorage.setItem('musictogether_user', uniqueName);
       }
     };
 
@@ -152,12 +179,16 @@ function App() {
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect_error', handleConnectError);
+    socket.on('user_verified', handleUserVerified);
+    socket.on('username_assigned', handleUsernameAssigned);
     socket.io.on('reconnect', handleReconnect);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect_error', handleConnectError);
+      socket.off('user_verified', handleUserVerified);
+      socket.off('username_assigned', handleUsernameAssigned);
       socket.io.off('reconnect', handleReconnect);
     };
   }, []); // ✅ Empty deps — uses refs to read latest roomId/username without stale closures

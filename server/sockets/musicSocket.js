@@ -1,10 +1,52 @@
 const { rooms, DEFAULT_TRACKS, getLivePlaybackTime } = require('../data/roomsStore');
 const Room = require('../models/Room');
 const Message = require('../models/Message');
+const User = require('../models/User');
+
+/**
+ * Resolves a unique username in a room by appending (2), (3) etc.
+ * if another user in the room already has the same name.
+ */
+function resolveUniqueUsername(requestedName, uid, members) {
+  const base = (requestedName || 'Friend').trim();
+  const otherMembers = (members || []).filter(m => m.userId && m.userId !== uid);
+  const takenNames = new Set(otherMembers.map(m => (m.name || '').toLowerCase()));
+
+  if (!takenNames.has(base.toLowerCase())) {
+    return base;
+  }
+
+  let counter = 2;
+  while (takenNames.has(`${base} (${counter})`.toLowerCase())) {
+    counter++;
+  }
+  return `${base} (${counter})`;
+}
 
 function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
-    console.log(`[Socket Connected] User ID: ${socket.id}`);
+    console.log(`[Socket Connected] Socket ID: ${socket.id}`);
+
+    // Verify user identity & save in MongoDB on socket connection
+    socket.on('check_user', async ({ userId, username }) => {
+      const uid = userId || ('usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
+      const cleanName = (username || 'Vikas').trim();
+
+      try {
+        await User.findOneAndUpdate(
+          { userId: uid },
+          { username: cleanName, lastSeen: new Date() },
+          { upsert: true, new: true }
+        );
+      } catch (err) {
+        console.warn('[User Check Error]:', err.message);
+      }
+
+      socket.emit('user_verified', {
+        userId: uid,
+        username: cleanName
+      });
+    });
 
     // Join room
     socket.on('join_room', async ({ roomId, username, userId }) => {
@@ -68,6 +110,12 @@ function registerSocketHandlers(io) {
         ).catch(() => {});
       }
 
+      // Resolve unique username in room if someone else has this name
+      const uniqueName = resolveUniqueUsername(username, uid, room.members);
+      if (uniqueName !== username) {
+        socket.emit('username_assigned', { username: uniqueName });
+      }
+
       // Check if this user (by userId or socket.id) already exists in room!
       const existingIdx = room.members.findIndex(m => 
         (m.userId && m.userId === uid) || m.id === socket.id
@@ -83,7 +131,7 @@ function registerSocketHandlers(io) {
       const memberObj = {
         id: socket.id,
         userId: uid,
-        name: username,
+        name: uniqueName,
         isHost: isHost
       };
 
@@ -237,7 +285,19 @@ function registerSocketHandlers(io) {
       const member = room.members.find(m => (m.userId && m.userId === uid) || m.id === socket.id);
       if (member) {
         const oldName = member.name;
-        member.name = username.trim();
+        const uniqueName = resolveUniqueUsername(username, uid, room.members);
+        member.name = uniqueName;
+
+        if (uniqueName !== username) {
+          socket.emit('username_assigned', { username: uniqueName });
+        }
+
+        // Update User in MongoDB
+        User.findOneAndUpdate(
+          { userId: uid },
+          { username: uniqueName, lastSeen: new Date() },
+          { upsert: true }
+        ).catch(() => {});
 
         const renameMsg = {
           id: Date.now() + Math.random().toString(),
