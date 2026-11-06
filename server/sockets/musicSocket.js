@@ -201,6 +201,49 @@ function registerSocketHandlers(io) {
       io.to(room.id).emit('new_message', chatMsg);
     });
 
+    // Explicit Leave Room Event
+    socket.on('leave_room', ({ roomId }) => {
+      if (!roomId) return;
+      const normalizedRoomId = roomId.toLowerCase().trim();
+      const room = rooms.get(normalizedRoomId);
+      if (!room) return;
+
+      const idx = room.members.findIndex(m => m.id === socket.id);
+      if (idx !== -1) {
+        const leavingMember = room.members[idx];
+        const wasHost = room.hostId === socket.id;
+
+        socket.leave(normalizedRoomId);
+
+        // If HOST leaves the room, destroy the room completely and dismiss everyone!
+        if (wasHost) {
+          console.log(`[Host Left] Room destroyed: ${normalizedRoomId}`);
+          io.to(normalizedRoomId).emit('room_closed', {
+            message: `Host (${leavingMember.name}) has ended the Jam Room. Session closed.`
+          });
+          rooms.delete(normalizedRoomId);
+          return;
+        }
+
+        // If ordinary member leaves:
+        room.members.splice(idx, 1);
+        const leaveMsg = {
+          id: Date.now() + Math.random().toString(),
+          sender: 'System',
+          text: `${leavingMember.name} left the room.`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isSystem: true
+        };
+        room.messages.push(leaveMsg);
+        io.to(normalizedRoomId).emit('new_message', leaveMsg);
+        io.to(normalizedRoomId).emit('members_updated', room.members);
+
+        if (room.members.length === 0) {
+          rooms.delete(normalizedRoomId);
+        }
+      }
+    });
+
     // Disconnect Handler
     socket.on('disconnect', () => {
       console.log(`[Socket Disconnected] User ID: ${socket.id}`);
@@ -208,8 +251,19 @@ function registerSocketHandlers(io) {
         const idx = room.members.findIndex(m => m.id === socket.id);
         if (idx !== -1) {
           const leavingMember = room.members[idx];
-          room.members.splice(idx, 1);
+          const wasHost = room.hostId === socket.id;
 
+          // If HOST disconnects / closes tab, notify all and terminate the room!
+          if (wasHost) {
+            console.log(`[Host Disconnected] Terminating room: ${roomId}`);
+            io.to(roomId).emit('room_closed', {
+              message: `Host (${leavingMember.name}) disconnected. Jam room closed.`
+            });
+            rooms.delete(roomId);
+            return;
+          }
+
+          room.members.splice(idx, 1);
           const leaveMsg = {
             id: Date.now() + Math.random().toString(),
             sender: 'System',
@@ -219,12 +273,6 @@ function registerSocketHandlers(io) {
           };
           room.messages.push(leaveMsg);
           io.to(roomId).emit('new_message', leaveMsg);
-
-          if (room.hostId === socket.id && room.members.length > 0) {
-            room.hostId = room.members[0].id;
-            room.members[0].isHost = true;
-          }
-
           io.to(roomId).emit('members_updated', room.members);
 
           if (room.members.length === 0) {

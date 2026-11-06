@@ -306,6 +306,18 @@ function App() {
       }, 50);
     });
 
+    // When host leaves and closes the room
+    socket.on('room_closed', ({ message }) => {
+      console.log('Room closed by host:', message);
+      setIsSessionActive(false);
+      setRoomId('');
+      setMembers([]);
+      setMessages([]);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      refreshRoomsList();
+      alert(message || 'The host has ended the Jam room session.');
+    });
+
     return () => {
       socket.off('room_sync_state');
       socket.off('members_updated');
@@ -315,6 +327,7 @@ function App() {
       socket.off('track_changed');
       socket.off('playlist_updated');
       socket.off('new_message');
+      socket.off('room_closed');
     };
   }, [socket]);
 
@@ -349,11 +362,15 @@ function App() {
   };
 
   const leaveJamSession = () => {
+    if (socket && roomId) {
+      socket.emit('leave_room', { roomId });
+    }
     setIsSessionActive(false);
     setRoomId('');
     setMembers([]);
     setMessages([]);
     window.history.replaceState({}, document.title, window.location.pathname);
+    refreshRoomsList();
   };
 
   const togglePlay = () => {
