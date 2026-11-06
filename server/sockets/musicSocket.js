@@ -5,16 +5,18 @@ function registerSocketHandlers(io) {
     console.log(`[Socket Connected] User ID: ${socket.id}`);
 
     // Join room
-    socket.on('join_room', ({ roomId, username }) => {
+    socket.on('join_room', ({ roomId, username, userId }) => {
       if (!roomId || !username) return;
 
       const normalizedRoomId = roomId.toLowerCase().trim();
+      const uid = userId || socket.id;
       socket.join(normalizedRoomId);
 
       let room = rooms.get(normalizedRoomId);
       if (!room) {
         room = {
           id: normalizedRoomId,
+          hostUserId: uid,
           hostId: socket.id,
           members: [],
           playlist: [...DEFAULT_TRACKS],
@@ -27,28 +29,41 @@ function registerSocketHandlers(io) {
         rooms.set(normalizedRoomId, room);
       }
 
-      // Add or update member
-      const existingIdx = room.members.findIndex(m => m.id === socket.id);
+      // Check if this user (by userId or socket.id) already exists in room!
+      const existingIdx = room.members.findIndex(m => 
+        (m.userId && m.userId === uid) || m.id === socket.id
+      );
+
+      // Check if this user is the room host
+      const isHost = room.hostUserId === uid || room.hostId === socket.id;
+      if (isHost) {
+        room.hostUserId = uid;
+        room.hostId = socket.id;
+      }
+
       const memberObj = {
         id: socket.id,
+        userId: uid,
         name: username,
-        isHost: room.hostId === socket.id
+        isHost: isHost
       };
 
       if (existingIdx !== -1) {
+        // User reconnecting or updating nickname: update in place without duplication!
         room.members[existingIdx] = memberObj;
       } else {
         room.members.push(memberObj);
-      }
 
-      const joinMsg = {
-        id: Date.now() + Math.random().toString(),
-        sender: 'System',
-        text: `${username} joined the music room! 🎧`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isSystem: true
-      };
-      room.messages.push(joinMsg);
+        const joinMsg = {
+          id: Date.now() + Math.random().toString(),
+          sender: 'System',
+          text: `${username} joined the music room! 🎧`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isSystem: true
+        };
+        room.messages.push(joinMsg);
+        io.to(normalizedRoomId).emit('new_message', joinMsg);
+      }
 
       // Send initial room state to the user who joined
       socket.emit('room_sync_state', {
@@ -58,9 +73,8 @@ function registerSocketHandlers(io) {
         }
       });
 
-      // Broadcast updated member list and system join message
+      // Broadcast updated member list (never contains duplicates)
       io.to(normalizedRoomId).emit('members_updated', room.members);
-      io.to(normalizedRoomId).emit('new_message', joinMsg);
     });
 
     // Play/Resume Sync
@@ -161,12 +175,13 @@ function registerSocketHandlers(io) {
     });
 
     // Update nickname & broadcast to everyone in the room
-    socket.on('update_nickname', ({ roomId, username }) => {
+    socket.on('update_nickname', ({ roomId, username, userId }) => {
       if (!roomId || !username) return;
       const room = rooms.get(roomId?.toLowerCase());
       if (!room) return;
 
-      const member = room.members.find(m => m.id === socket.id);
+      const uid = userId || socket.id;
+      const member = room.members.find(m => (m.userId && m.userId === uid) || m.id === socket.id);
       if (member) {
         const oldName = member.name;
         member.name = username.trim();
@@ -201,21 +216,22 @@ function registerSocketHandlers(io) {
       io.to(room.id).emit('new_message', chatMsg);
     });
 
-    // Explicit Leave Room Event
-    socket.on('leave_room', ({ roomId }) => {
+    // Explicit Leave Room Event (Host explicitly clicking Leave Jam)
+    socket.on('leave_room', ({ roomId, userId }) => {
       if (!roomId) return;
       const normalizedRoomId = roomId.toLowerCase().trim();
       const room = rooms.get(normalizedRoomId);
       if (!room) return;
 
-      const idx = room.members.findIndex(m => m.id === socket.id);
+      const uid = userId || socket.id;
+      const idx = room.members.findIndex(m => (m.userId && m.userId === uid) || m.id === socket.id);
       if (idx !== -1) {
         const leavingMember = room.members[idx];
-        const wasHost = room.hostId === socket.id;
+        const wasHost = leavingMember.isHost || room.hostUserId === uid || room.hostId === socket.id;
 
         socket.leave(normalizedRoomId);
 
-        // If HOST leaves the room, destroy the room completely and dismiss everyone!
+        // If HOST explicitly leaves the room, destroy the room completely and dismiss everyone!
         if (wasHost) {
           console.log(`[Host Left] Room destroyed: ${normalizedRoomId}`);
           io.to(normalizedRoomId).emit('room_closed', {
@@ -245,26 +261,47 @@ function registerSocketHandlers(io) {
       }
     });
 
-    // Disconnect Handler
+    // Disconnect Handler (Handles accidental drops, reloads, and stale polling sockets)
     socket.on('disconnect', () => {
       console.log(`[Socket Disconnected] User ID: ${socket.id}`);
       rooms.forEach((room, roomId) => {
         const idx = room.members.findIndex(m => m.id === socket.id);
         if (idx !== -1) {
           const leavingMember = room.members[idx];
-          const wasHost = room.hostId === socket.id;
 
-          // If HOST disconnects / closes tab, notify all and terminate the room!
-          if (wasHost) {
-            console.log(`[Host Disconnected] Terminating room: ${roomId}`);
-            io.to(roomId).emit('room_closed', {
-              message: `Host (${leavingMember.name}) disconnected. Jam room closed.`
-            });
-            io.in(roomId).socketsLeave(roomId);
-            rooms.delete(roomId);
+          // If the user already reconnected on another socket (page refresh / transport switch), ignore!
+          if (room.members[idx].id !== socket.id) {
             return;
           }
 
+          // If HOST disconnects (could be quick F5 refresh), give a 10s grace period before tearing down
+          if (leavingMember.isHost) {
+            console.log(`[Host Disconnected] Waiting 10s grace period for host reconnect: ${roomId}`);
+            setTimeout(() => {
+              const currentRoom = rooms.get(roomId);
+              if (!currentRoom) return;
+
+              // Check if host reconnected with same userId or socket
+              const hostReconnected = currentRoom.members.some(m => 
+                (m.userId && m.userId === leavingMember.userId && m.id !== socket.id) ||
+                (currentRoom.hostUserId === leavingMember.userId && currentRoom.hostId !== socket.id)
+              );
+
+              if (!hostReconnected) {
+                console.log(`[Host Grace Expired] Terminating room: ${roomId}`);
+                io.to(roomId).emit('room_closed', {
+                  message: `Host (${leavingMember.name}) disconnected. Jam room closed.`
+                });
+                io.in(roomId).socketsLeave(roomId);
+                rooms.delete(roomId);
+              } else {
+                console.log(`[Host Grace] Host safely reconnected to ${roomId}`);
+              }
+            }, 10000);
+            return;
+          }
+
+          // Ordinary member disconnected:
           room.members.splice(idx, 1);
           const leaveMsg = {
             id: Date.now() + Math.random().toString(),

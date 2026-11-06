@@ -1,20 +1,33 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Users } from 'lucide-react';
 
-export default function MembersList({ members = [], currentSocketId }) {
+export default function MembersList({ members = [], currentUserId, currentSocketId }) {
+  // Deduplicate members list by unique user identity (userId or socket id)
+  const uniqueMembers = useMemo(() => {
+    const map = new Map();
+    for (const m of members) {
+      const key = m.userId || m.id;
+      // If duplicate exists, preserve the host entry or latest
+      if (!map.has(key) || m.isHost) {
+        map.set(key, m);
+      }
+    }
+    return Array.from(map.values());
+  }, [members]);
+
   return (
     <div className="flex flex-col h-full border-b border-white/[0.08] bg-zinc-900/30">
       <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[0.06] text-xs font-semibold text-zinc-300">
         <Users size={16} className="text-rose-400" />
-        <span>Friends in Room ({members.length})</span>
+        <span>Friends in Room ({uniqueMembers.length})</span>
       </div>
       
       <div className="flex flex-col gap-1 p-3 overflow-y-auto flex-1">
-        {members.map((m) => {
-          const isMe = m.id === currentSocketId;
+        {uniqueMembers.map((m) => {
+          const isMe = (currentUserId && m.userId === currentUserId) || m.id === currentSocketId;
           return (
             <div 
-              key={m.id} 
+              key={m.userId || m.id} 
               className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors ${
                 isMe ? 'bg-white/[0.08] text-white font-medium' : 'text-zinc-300 hover:bg-white/[0.04]'
               }`}

@@ -28,6 +28,16 @@ function App() {
     return localStorage.getItem('musictogether_user') || 'Vikas';
   });
 
+  // Persistent User Device ID across refreshes to prevent ghost duplicates
+  const [userId] = useState(() => {
+    let id = localStorage.getItem('musictogether_uid');
+    if (!id) {
+      id = 'usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+      localStorage.setItem('musictogether_uid', id);
+    }
+    return id;
+  });
+
   // Jam Session state
   const [roomId, setRoomId] = useState('');
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -82,11 +92,13 @@ function App() {
     }
   }, []);
 
-  // Refs for roomId and username used in socket handlers (avoid stale closures without re-registering)
+  // Refs for roomId, username, and persistent userId used in socket handlers
   const roomIdRef = useRef('');
   const usernameRef = useRef(username);
+  const userIdRef = useRef(userId);
   useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
   useEffect(() => { usernameRef.current = username; }, [username]);
+  useEffect(() => { userIdRef.current = userId; }, [userId]);
 
   // 1. Hook into Global Singleton Socket & Auto-Join URL Room Parameter (?room=xyz)
   useEffect(() => {
@@ -104,7 +116,8 @@ function App() {
         setIsSessionActive(true);
         socket.emit('join_room', {
           roomId: targetRoom,
-          username: usernameRef.current
+          username: usernameRef.current,
+          userId: userIdRef.current
         });
       }
     };
@@ -125,7 +138,8 @@ function App() {
       if (roomIdRef.current) {
         socket.emit('join_room', {
           roomId: roomIdRef.current.trim().toLowerCase(),
-          username: usernameRef.current
+          username: usernameRef.current,
+          userId: userIdRef.current
         });
       }
     };
@@ -190,6 +204,16 @@ function App() {
       if (state.playlist && state.playlist.length > 0) {
         setPlaylist(state.playlist);
       }
+      if (state.members && Array.isArray(state.members)) {
+        const map = new Map();
+        for (const m of state.members) {
+          const key = m.userId || m.id;
+          if (!map.has(key) || m.isHost) {
+            map.set(key, m);
+          }
+        }
+        setMembers(Array.from(map.values()));
+      }
       if (typeof state.currentTrackIndex === 'number') {
         setCurrentTrackIndex(state.currentTrackIndex);
       }
@@ -214,7 +238,15 @@ function App() {
     });
 
     socket.on('members_updated', (updatedMembers) => {
-      setMembers(updatedMembers);
+      // Deduplicate by userId or socket id to ensure no ghost entries ever appear
+      const map = new Map();
+      for (const m of (updatedMembers || [])) {
+        const key = m.userId || m.id;
+        if (!map.has(key) || m.isHost) {
+          map.set(key, m);
+        }
+      }
+      setMembers(Array.from(map.values()));
     });
 
     socket.on('sync_play_state', ({ currentTime: time }) => {
@@ -368,7 +400,8 @@ function App() {
     if (socket) {
       socket.emit('join_room', {
         roomId: cleanRoom,
-        username: username
+        username: username,
+        userId: userId
       });
     }
     // Auto-copy invite link to clipboard immediately upon creating/joining room!
@@ -380,7 +413,7 @@ function App() {
 
   const leaveJamSession = () => {
     if (socket && roomId) {
-      socket.emit('leave_room', { roomId });
+      socket.emit('leave_room', { roomId, userId });
     }
     setIsSessionActive(false);
     setRoomId('');
@@ -624,7 +657,8 @@ function App() {
     if (socket && isSessionActive && roomId) {
       socket.emit('update_nickname', {
         roomId,
-        username: trimmed
+        username: trimmed,
+        userId: userId
       });
     }
   };
@@ -799,6 +833,7 @@ function App() {
             <div className="h-56 sm:h-64 shrink-0 overflow-hidden">
               <MembersList
                 members={members}
+                currentUserId={userId}
                 currentSocketId={socket?.id}
               />
             </div>
