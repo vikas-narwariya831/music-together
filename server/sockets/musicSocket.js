@@ -160,6 +160,30 @@ function registerSocketHandlers(io) {
       io.to(room.id).emit('new_message', alertMsg);
     });
 
+    // Update nickname & broadcast to everyone in the room
+    socket.on('update_nickname', ({ roomId, username }) => {
+      if (!roomId || !username) return;
+      const room = rooms.get(roomId?.toLowerCase());
+      if (!room) return;
+
+      const member = room.members.find(m => m.id === socket.id);
+      if (member) {
+        const oldName = member.name;
+        member.name = username.trim();
+
+        const renameMsg = {
+          id: Date.now() + Math.random().toString(),
+          sender: 'System',
+          text: `"${oldName}" is now "${member.name}" 🏷️`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isSystem: true
+        };
+        room.messages.push(renameMsg);
+        io.to(room.id).emit('new_message', renameMsg);
+        io.to(room.id).emit('members_updated', room.members);
+      }
+    });
+
     // Chat Message
     socket.on('send_message', ({ roomId, message, username }) => {
       const room = rooms.get(roomId?.toLowerCase());

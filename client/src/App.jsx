@@ -11,6 +11,7 @@ import ChatPanel from './components/ChatPanel';
 import BottomPlayerBar from './components/BottomPlayerBar';
 import SessionModal from './components/SessionModal';
 import AddTrackModal from './components/AddTrackModal';
+import NicknameModal from './components/NicknameModal';
 import YouTubeAudioBridge from './components/YouTubeAudioBridge';
 
 import './App.css';
@@ -20,9 +21,9 @@ const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || 'https://server-chi
 function App() {
   const [socket, setSocket] = useState(null);
 
-  // Auto-generate guest username or pull from localStorage
+  // Auto-generate guest username or pull from localStorage (Default: Vikas)
   const [username, setUsername] = useState(() => {
-    return localStorage.getItem('musictogether_user') || 'Friend-' + Math.floor(100 + Math.random() * 900);
+    return localStorage.getItem('musictogether_user') || 'Vikas';
   });
 
   // Jam Session state
@@ -49,6 +50,7 @@ function App() {
   // Modals & Chat
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -444,6 +446,19 @@ function App() {
     }
   };
 
+  const handleUpdateNickname = (newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setUsername(trimmed);
+    localStorage.setItem('musictogether_user', trimmed);
+    if (socket && isSessionActive && roomId) {
+      socket.emit('update_nickname', {
+        roomId,
+        username: trimmed
+      });
+    }
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !socket || !roomId) return;
@@ -571,6 +586,7 @@ function App() {
         onToggleMobileSidebar={() => setShowMobileSidebar(prev => !prev)}
         showMobileSidebar={showMobileSidebar}
         moodProfile={currentMoodProfile}
+        onOpenNicknameModal={() => setShowNicknameModal(true)}
       />
 
       {/* Main Content Area */}
@@ -676,6 +692,14 @@ function App() {
         customUrl={customUrl}
         setCustomUrl={setCustomUrl}
         onAddTrack={handleAddCustomTrack}
+      />
+
+      {/* Nickname Selection Glass Modal */}
+      <NicknameModal
+        isOpen={showNicknameModal}
+        onClose={() => setShowNicknameModal(false)}
+        currentName={username}
+        onSaveName={handleUpdateNickname}
       />
     </div>
   );

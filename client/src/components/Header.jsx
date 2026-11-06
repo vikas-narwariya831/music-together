@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function Header({ 
-  username = 'Listener', 
+  username = 'Vikas', 
   setUsername, 
   isSessionActive = false, 
   roomId = '', 
@@ -25,10 +25,11 @@ export default function Header({
   isSearching,
   onToggleMobileSidebar,
   showMobileSidebar,
-  moodProfile
+  moodProfile,
+  onOpenNicknameModal
 }) {
-  const safeName = username || 'Listener';
-  const initial = safeName.trim() ? safeName.trim().charAt(0).toUpperCase() : 'U';
+  const safeName = username || 'Vikas';
+  const initial = safeName.trim() ? safeName.trim().charAt(0).toUpperCase() : 'V';
 
   const brandGradient = moodProfile?.colors ? 
     `linear-gradient(135deg, ${moodProfile.colors[0]}, ${moodProfile.colors[1] || moodProfile.colors[0]})` : 
@@ -179,18 +180,23 @@ export default function Header({
           </button>
         )}
 
-        {/* User Glass Avatar & Name */}
-        <div className="flex items-center gap-2.5 pl-2.5 border-l border-white/10">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center shadow-md ring-1 ring-white/20 shrink-0">
+        {/* User Glass Avatar & Name (Click to open Nickname Modal) */}
+        <div 
+          onClick={onOpenNicknameModal}
+          title="Click to change your nickname"
+          className="flex items-center gap-2.5 pl-2.5 border-l border-white/10 cursor-pointer group hover:opacity-90 transition-opacity"
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center shadow-md ring-1 ring-white/20 shrink-0 group-hover:scale-105 transition-transform">
             {initial}
           </div>
-          <input
-            type="text"
-            className="w-20 bg-transparent text-xs font-semibold text-zinc-200 hover:text-white focus:text-white outline-none cursor-pointer hover:bg-white/5 focus:bg-white/10 rounded px-1.5 py-0.5 transition-colors hidden sm:block"
-            value={username || ''}
-            onChange={(e) => setUsername && setUsername(e.target.value)}
-            title="Click to edit display name"
-          />
+          <div className="flex items-center gap-1.5 hidden sm:flex">
+            <span className="text-xs font-semibold text-zinc-200 group-hover:text-white transition-colors truncate max-w-[100px]">
+              {username || 'Vikas'}
+            </span>
+            <span className="text-[10px] text-zinc-500 group-hover:text-rose-400 transition-colors">
+              ✏️
+            </span>
+          </div>
         </div>
       </div>
     </header>
