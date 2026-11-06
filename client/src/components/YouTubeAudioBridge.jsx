@@ -16,6 +16,12 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
     },
     play: () => {
       if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+        try {
+          if (!isMuted && typeof playerRef.current.unMute === 'function') {
+            playerRef.current.unMute();
+            playerRef.current.setVolume(Math.round((volume || 0.85) * 100));
+          }
+        } catch (e) {}
         playerRef.current.playVideo();
       }
     },
@@ -48,7 +54,7 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
         width: '100%',
         videoId: videoId,
         playerVars: {
-          autoplay: 1,
+          autoplay: 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
@@ -66,8 +72,12 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
               event.target.unMute();
             }
 
+            // Only play if isPlaying is true, and ensure audio is unmuted
             if (isPlaying) {
+              event.target.unMute();
               event.target.playVideo();
+            } else {
+              event.target.pauseVideo();
             }
             if (onDuration) {
               onDuration(event.target.getDuration());
