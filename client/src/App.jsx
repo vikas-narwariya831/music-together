@@ -585,23 +585,21 @@ function App() {
       />
 
       {/* Official YouTube Audio Bridge: Plays full length songs without showing video */}
-      {currentTrack?.isYouTube && currentTrack?.videoId && (
-        <YouTubeAudioBridge
-          ref={ytAudioBridgeRef}
-          videoId={currentTrack.videoId}
-          isPlaying={isPlaying}
-          volume={volume}
-          isMuted={isMuted}
-          onProgress={(curr) => setCurrentTime(curr)}
-          onDuration={(dur) => setDuration(dur)}
-          onEnded={handleNextTrack}
-          onBuffering={(buf) => setIsBuffering(buf)}
-          onError={(errCode) => {
-            console.warn(`YouTube stream error ${errCode} on ${currentTrack.title}. Auto-skipping to next playable track...`);
-            handleNextTrack();
-          }}
-        />
-      )}
+      <YouTubeAudioBridge
+        ref={ytAudioBridgeRef}
+        videoId={currentTrack?.isYouTube ? currentTrack.videoId : null}
+        isPlaying={isPlaying && Boolean(currentTrack?.isYouTube)}
+        volume={volume}
+        isMuted={isMuted}
+        onProgress={(curr) => setCurrentTime(curr)}
+        onDuration={(dur) => setDuration(dur)}
+        onEnded={handleNextTrack}
+        onBuffering={(buf) => setIsBuffering(buf)}
+        onError={(errCode) => {
+          console.warn(`YouTube stream error ${errCode} on ${currentTrack?.title}. Auto-skipping to next playable track...`);
+          handleNextTrack();
+        }}
+      />
 
       {/* Top Header */}
       <Header

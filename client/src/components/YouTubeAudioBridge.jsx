@@ -41,11 +41,20 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
     }
 
     const initPlayer = () => {
-      if (!window.YT || !window.YT.Player) return;
+      if (!window.YT || !window.YT.Player || !videoId) return;
 
+      // If player already exists, simply load new video instead of creating duplicate iframes!
       if (playerRef.current) {
         try {
-          playerRef.current.destroy();
+          if (typeof playerRef.current.loadVideoById === 'function') {
+            playerRef.current.loadVideoById(videoId);
+            if (!isPlaying) {
+              playerRef.current.pauseVideo();
+            }
+            return;
+          } else {
+            playerRef.current.destroy();
+          }
         } catch (e) {}
       }
 
@@ -124,11 +133,6 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
-        try {
-          playerRef.current.destroy();
-        } catch (e) {}
-      }
     };
   }, [videoId]);
 
