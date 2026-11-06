@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import audioCoordinator from '../utils/audioCoordinator';
 
 const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
   { videoId, isPlaying, volume, isMuted, onProgress, onDuration, onEnded, onBuffering, onError },
@@ -30,6 +31,13 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
       if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
         playerRef.current.pauseVideo();
       }
+    },
+    stop: () => {
+      if (playerRef.current && typeof playerRef.current.stopVideo === 'function') {
+        try {
+          playerRef.current.stopVideo();
+        } catch (e) {}
+      }
     }
   }));
 
@@ -53,11 +61,13 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
 
       // If YouTube player is already instantiated, STOP OLD AND LOAD NEW!
       if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+        audioCoordinator.registerYTPlayer(playerRef.current);
         if (currentVideoIdRef.current !== videoId) {
           currentVideoIdRef.current = videoId;
           console.log(`[YouTubeAudioBridge] 🔄 Switching to track: ${videoId}`);
           try {
             playerRef.current.stopVideo();
+            playerRef.current.clearVideo?.();
             playerRef.current.loadVideoById({
               videoId: videoId,
               startSeconds: 0
@@ -90,6 +100,7 @@ const YouTubeAudioBridge = forwardRef(function YouTubeAudioBridge(
         },
         events: {
           onReady: (event) => {
+            audioCoordinator.registerYTPlayer(event.target);
             const currentVol = isMuted ? 0 : Math.round((volume || 0.85) * 100);
             event.target.setVolume(currentVol);
             if (isMuted) {

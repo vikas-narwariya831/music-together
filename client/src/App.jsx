@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { fetchActiveRooms, searchFullSongs, searchITunesSongs } from './api/musicApi';
 import { detectTrackMood } from './utils/visualizerIntelligence';
+import audioCoordinator from './utils/audioCoordinator';
 
 // Components
 import Header from './components/Header';
@@ -70,6 +71,13 @@ function App() {
   const ytAudioBridgeRef = useRef(null);
   const isSyncingRef = useRef(false);
   const chatBottomRef = useRef(null);
+
+  // Register HTML5 audio with coordinator once available
+  useEffect(() => {
+    if (audioRef.current) {
+      audioCoordinator.registerAudio(audioRef.current);
+    }
+  }, []);
 
   // 1. Initial Socket Connection & Auto-Join URL Room Parameter (?room=xyz)
   useEffect(() => {
@@ -247,24 +255,43 @@ function App() {
 
     socket.on('track_changed', ({ currentTrackIndex: idx, isPlaying: playing, currentTime: time }) => {
       console.log('⚡ Socket track_changed received:', idx);
+      // Hard stop any ongoing playback to prevent overlap
+      audioCoordinator.stopAll();
+
       setCurrentTrackIndex(idx);
       setIsPlaying(playing);
       setCurrentTime(time || 0);
-      if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
-        ytAudioBridgeRef.current.seekTo(time || 0);
-        if (playing && typeof ytAudioBridgeRef.current.play === 'function') {
-          ytAudioBridgeRef.current.play();
-        }
+
+      const targetTrack = playlist[idx];
+      if (targetTrack) {
+        audioCoordinator.prepareTrack(targetTrack);
       }
-      if (audioRef.current) {
-        isSyncingRef.current = true;
-        audioRef.current.currentTime = time || 0;
-        if (playing) {
-          audioRef.current.play().catch(console.error);
-        } else {
-          audioRef.current.pause();
+
+      if (targetTrack?.isYouTube) {
+        if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
+          ytAudioBridgeRef.current.seekTo(time || 0);
+          if (playing && typeof ytAudioBridgeRef.current.play === 'function') {
+            ytAudioBridgeRef.current.play();
+          }
         }
-        setTimeout(() => { isSyncingRef.current = false; }, 300);
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+      } else {
+        if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
+          ytAudioBridgeRef.current.stop();
+        }
+        if (audioRef.current) {
+          isSyncingRef.current = true;
+          audioRef.current.currentTime = time || 0;
+          if (playing) {
+            audioRef.current.play().catch(console.error);
+          } else {
+            audioRef.current.pause();
+          }
+          setTimeout(() => { isSyncingRef.current = false; }, 300);
+        }
       }
     });
 
@@ -376,20 +403,34 @@ function App() {
   };
 
   const handleSelectTrack = (index) => {
+    const track = playlist[index];
+    if (!track) return;
+
+    // 1. AudioCoordinator: Hard stop all old running audio immediately to prevent duplicate playback!
+    audioCoordinator.prepareTrack(track);
+
     setCurrentTrackIndex(index);
     setCurrentTime(0);
-    const track = playlist[index];
     if (track?.duration) setDuration(track.duration);
 
     if (track?.isYouTube) {
       setIsPlaying(true);
-      if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
-        ytAudioBridgeRef.current.seekTo(0);
+      if (ytAudioBridgeRef.current) {
+        if (typeof ytAudioBridgeRef.current.seekTo === 'function') {
+          ytAudioBridgeRef.current.seekTo(0);
+        }
+        if (typeof ytAudioBridgeRef.current.play === 'function') {
+          ytAudioBridgeRef.current.play();
+        }
       }
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
       }
     } else if (audioRef.current && track?.src) {
+      if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.stop === 'function') {
+        ytAudioBridgeRef.current.stop();
+      }
       audioRef.current.currentTime = 0;
       audioRef.current.src = track.src;
       audioRef.current.load();
