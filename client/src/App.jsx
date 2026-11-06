@@ -227,6 +227,14 @@ function App() {
     setActiveRooms(rooms);
   };
 
+  const copyInviteLink = () => {
+    if (!roomId) return;
+    const url = `${window.location.origin}/?room=${roomId}`;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
   const handleJoinJamRoom = (targetRoomId) => {
     const cleanRoom = targetRoomId.trim().toLowerCase();
     setRoomId(cleanRoom);
@@ -237,14 +245,11 @@ function App() {
         username: username
       });
     }
-  };
-
-  const leaveJamSession = () => {
-    setIsSessionActive(false);
-    setRoomId('');
-    setMembers([]);
-    setMessages([]);
-    window.history.replaceState({}, document.title, window.location.pathname);
+    // Auto-copy invite link to clipboard immediately upon creating/joining room!
+    const url = `${window.location.origin}/?room=${cleanRoom}`;
+    navigator.clipboard.writeText(url).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   const togglePlay = () => {
@@ -466,13 +471,6 @@ function App() {
     setCustomArtist('');
     setCustomUrl('');
     setShowAddModal(false);
-  };
-
-  const copyInviteLink = () => {
-    const url = `${window.location.origin}?room=${roomId}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const formatTime = (seconds) => {

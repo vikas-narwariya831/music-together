@@ -124,28 +124,49 @@ export default function Header({
           </button>
         )}
 
-        {/* SharePlay / Jam Status */}
+        {/* SharePlay / Jam Status with Interactive Copy Indicator */}
         {isSessionActive ? (
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-xl shadow-lg">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-xl shadow-lg relative">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
             <span className="text-xs font-semibold text-emerald-300 font-mono tracking-wide">
               {roomId}
             </span>
+
+            {/* Share / Copy Button with Cursor Pointer */}
             <button 
               type="button"
               onClick={onCopyLink}
-              className="p-1 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
-              title="Copy Room Link"
+              className="p-1.5 rounded-full hover:bg-white/10 active:scale-95 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+              title="Copy Room Link to Invite Friends"
             >
-              {copied ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
+              {copied ? (
+                <>
+                  <Check size={14} className="text-emerald-400" />
+                  <span className="text-[11px] font-bold text-emerald-300 sm:inline hidden animate-in fade-in">
+                    Link Copied!
+                  </span>
+                </>
+              ) : (
+                <Share2 size={14} className="hover:scale-110 transition-transform" />
+              )}
             </button>
+
             <button
               type="button"
               onClick={onLeaveSession}
-              className="text-xs font-medium text-rose-400 hover:underline px-1 transition-colors"
+              className="text-xs font-medium text-rose-400 hover:text-rose-300 hover:underline px-1 transition-colors cursor-pointer"
+              title="Leave this Jam Room"
             >
               Leave
             </button>
+
+            {/* Floating Toast Message when Copied */}
+            {copied && (
+              <div className="absolute top-12 left-1/2 -translate-x-1/2 whitespace-nowrap px-3.5 py-1.5 rounded-xl bg-zinc-900/95 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 z-50 flex items-center gap-1.5 ring-1 ring-emerald-500/20">
+                <Check size={13} className="text-emerald-400" />
+                <span>Link Copied Successfully! 🎉</span>
+              </div>
+            )}
           </div>
         ) : (
           <button 
