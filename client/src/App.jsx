@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { fetchActiveRooms, searchFullSongs, searchITunesSongs } from './api/musicApi';
 import { detectTrackMood } from './utils/visualizerIntelligence';
 import audioCoordinator from './utils/audioCoordinator';
-import socket from './utils/socketClient';
+import socket, { getOrCreateUserId, getStoredUsername } from './utils/socketClient';
 
 // Components
 import Header from './components/Header';
@@ -24,19 +24,10 @@ function App() {
   const [isSocketConnected, setIsSocketConnected] = useState(socket.connected);
 
   // Auto-generate guest username or pull from localStorage (Default: Vikas)
-  const [username, setUsername] = useState(() => {
-    return localStorage.getItem('musictogether_user') || 'Vikas';
-  });
+  const [username, setUsername] = useState(() => getStoredUsername());
 
   // Persistent User Device ID across refreshes to prevent ghost duplicates
-  const [userId] = useState(() => {
-    let id = localStorage.getItem('musictogether_uid');
-    if (!id) {
-      id = 'usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
-      localStorage.setItem('musictogether_uid', id);
-    }
-    return id;
-  });
+  const [userId] = useState(() => getOrCreateUserId());
 
   // Jam Session state
   const [roomId, setRoomId] = useState('');
@@ -163,6 +154,13 @@ function App() {
       }
     };
 
+    const handleSessionReady = ({ userId: confirmedUid, username: finalName }) => {
+      console.log(`⚡ Session established: UID=${confirmedUid}, User=${finalName}`);
+      if (confirmedUid) {
+        localStorage.setItem('musictogether_uid', confirmedUid);
+      }
+    };
+
     const handleUsernameAssigned = ({ username: uniqueName }) => {
       console.log(`🏷️ Server resolved unique room name: ${uniqueName}`);
       if (uniqueName) {
@@ -179,6 +177,7 @@ function App() {
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect_error', handleConnectError);
+    socket.on('session_ready', handleSessionReady);
     socket.on('user_verified', handleUserVerified);
     socket.on('username_assigned', handleUsernameAssigned);
     socket.io.on('reconnect', handleReconnect);
@@ -187,6 +186,7 @@ function App() {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect_error', handleConnectError);
+      socket.off('session_ready', handleSessionReady);
       socket.off('user_verified', handleUserVerified);
       socket.off('username_assigned', handleUsernameAssigned);
       socket.io.off('reconnect', handleReconnect);
@@ -685,6 +685,12 @@ function App() {
     setUsername(trimmed);
     localStorage.setItem('musictogether_user', trimmed);
     localStorage.setItem('musictogether_has_visited', 'true');
+    if (socket) {
+      socket.auth = {
+        userId: userId,
+        username: trimmed
+      };
+    }
     if (socket && isSessionActive && roomId) {
       socket.emit('update_nickname', {
         roomId,

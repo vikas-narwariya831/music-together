@@ -27,7 +27,10 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST']
-  }
+  },
+  transports: ['websocket', 'polling'],
+  pingTimeout: 20000,
+  pingInterval: 10000
 });
 
 // Register modular socket logic

@@ -24,13 +24,43 @@ function resolveUniqueUsername(requestedName, uid, members) {
 }
 
 function registerSocketHandlers(io) {
+  // 1. Connection Authentication Middleware: reads userId and username at handshake!
+  io.use(async (socket, next) => {
+    try {
+      const auth = socket.handshake.auth || {};
+      const query = socket.handshake.query || {};
+      const uid = auth.userId || query.userId || ('usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
+      const uname = (auth.username || query.username || 'Vikas').trim();
+
+      socket.userId = uid;
+      socket.username = uname;
+
+      // Persist or update user in MongoDB Atlas right at connection
+      User.findOneAndUpdate(
+        { userId: uid },
+        { username: uname, lastSeen: new Date() },
+        { upsert: true, new: true }
+      ).catch((err) => console.warn('[MongoDB User Handshake Error]:', err.message));
+
+      next();
+    } catch (err) {
+      next();
+    }
+  });
+
   io.on('connection', (socket) => {
-    console.log(`[Socket Connected] Socket ID: ${socket.id}`);
+    console.log(`[Socket Connected] Socket ID: ${socket.id} | User: ${socket.username} (UID: ${socket.userId})`);
+
+    // Acknowledge session to client immediately with confirmed userId
+    socket.emit('session_ready', {
+      userId: socket.userId,
+      username: socket.username
+    });
 
     // Verify user identity & save in MongoDB on socket connection
     socket.on('check_user', async ({ userId, username }) => {
-      const uid = userId || ('usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
-      const cleanName = (username || 'Vikas').trim();
+      const uid = userId || socket.userId || ('usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
+      const cleanName = (username || socket.username || 'Vikas').trim();
 
       try {
         await User.findOneAndUpdate(

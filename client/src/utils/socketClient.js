@@ -11,12 +11,44 @@ export const BACKEND_URL = isLocal
   : (import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app');
 
 /**
+ * Ensure persistent device/user identity in localStorage BEFORE socket connects
+ */
+export function getOrCreateUserId() {
+  if (typeof window === 'undefined') return '';
+  let id = localStorage.getItem('musictogether_uid');
+  if (!id) {
+    id = 'usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+    localStorage.setItem('musictogether_uid', id);
+  }
+  return id;
+}
+
+export function getStoredUsername() {
+  if (typeof window === 'undefined') return 'Vikas';
+  return localStorage.getItem('musictogether_user') || 'Vikas';
+}
+
+// Pre-fetch identity before establishing socket connection
+const initialUserId = getOrCreateUserId();
+const initialUsername = getStoredUsername();
+
+/**
  * Global Singleton Socket Instance
- * Automatically connects immediately when the app starts, persists throughout page lifetime,
- * and handles reconnection seamlessly across mobile/desktop.
+ * Automatically sends userId and username in the handshake `auth` & `query`,
+ * uses WebSocket transport first to eliminate "Session ID unknown" polling errors,
+ * and recovers gracefully.
  */
 export const socket = io(BACKEND_URL, {
-  transports: ['polling', 'websocket'], // Polling first for 100% instant handshake on Vercel/proxies, then auto-upgrades to websocket
+  transports: ['websocket', 'polling'], // WebSocket first avoids stale HTTP polling session ID errors
+  upgrade: true,
+  auth: {
+    userId: initialUserId,
+    username: initialUsername
+  },
+  query: {
+    userId: initialUserId,
+    username: initialUsername
+  },
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 500,
@@ -27,16 +59,32 @@ export const socket = io(BACKEND_URL, {
 });
 
 socket.on('connect', () => {
-  console.log(`⚡ [Global Socket] Connected successfully! ID: ${socket.id} to ${BACKEND_URL}`);
+  console.log(`⚡ [Global Socket] Connected successfully! ID: ${socket.id} (User: ${getStoredUsername()}, UID: ${getOrCreateUserId()}) to ${BACKEND_URL}`);
 });
 
 socket.on('connect_error', (err) => {
   console.warn('⚠️ [Global Socket] Connect error:', err.message);
+
+  // If "Session ID unknown" happens due to server restart or serverless container change:
+  // Update auth credentials and trigger immediate fresh connection
+  if (err.message && (err.message.includes('Session ID unknown') || err.message.includes('code":1'))) {
+    console.log('🔄 Session ID expired/unknown. Refreshing handshake credentials and reconnecting...');
+    socket.auth = {
+      userId: getOrCreateUserId(),
+      username: getStoredUsername()
+    };
+    socket.connect();
+  }
 });
 
 socket.on('disconnect', (reason) => {
   console.warn('🔌 [Global Socket] Disconnected:', reason);
-  if (reason === 'io server disconnect' || reason === 'transport close') {
+  // Re-sync auth with latest localStorage data before reconnecting
+  socket.auth = {
+    userId: getOrCreateUserId(),
+    username: getStoredUsername()
+  };
+  if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
     socket.connect();
   }
 });
