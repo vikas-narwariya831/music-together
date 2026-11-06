@@ -1,9 +1,14 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const connectDB = require('./config/db');
 const roomRoutes = require('./routes/roomRoutes');
 const { registerSocketHandlers } = require('./sockets/musicSocket');
+
+// Connect to MongoDB Atlas
+connectDB();
 
 const app = express();
 app.use(cors());

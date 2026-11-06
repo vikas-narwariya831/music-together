@@ -1,11 +1,13 @@
 const { rooms, DEFAULT_TRACKS, getLivePlaybackTime } = require('../data/roomsStore');
+const Room = require('../models/Room');
+const Message = require('../models/Message');
 
 function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
     console.log(`[Socket Connected] User ID: ${socket.id}`);
 
     // Join room
-    socket.on('join_room', ({ roomId, username, userId }) => {
+    socket.on('join_room', async ({ roomId, username, userId }) => {
       if (!roomId || !username) return;
 
       const normalizedRoomId = roomId.toLowerCase().trim();
@@ -14,19 +16,56 @@ function registerSocketHandlers(io) {
 
       let room = rooms.get(normalizedRoomId);
       if (!room) {
+        // Try restoring room playlist & history from MongoDB Atlas
+        let savedRoom = null;
+        try {
+          savedRoom = await Room.findOne({ roomId: normalizedRoomId });
+        } catch (dbErr) {
+          console.warn('[MongoDB] Error finding room:', dbErr.message);
+        }
+
         room = {
           id: normalizedRoomId,
-          hostUserId: uid,
+          hostUserId: savedRoom?.hostUserId || uid,
           hostId: socket.id,
           members: [],
-          playlist: [...DEFAULT_TRACKS],
-          currentTrackIndex: 0,
+          playlist: (savedRoom?.playlist && savedRoom.playlist.length > 0) ? savedRoom.playlist : [...DEFAULT_TRACKS],
+          currentTrackIndex: savedRoom?.currentTrackIndex || 0,
           isPlaying: false,
           currentTime: 0,
           lastUpdated: Date.now(),
           messages: []
         };
         rooms.set(normalizedRoomId, room);
+
+        // Restore past chat messages from MongoDB if available
+        try {
+          const pastMessages = await Message.find({ roomId: normalizedRoomId }).sort({ createdAt: 1 }).limit(30);
+          if (pastMessages && pastMessages.length > 0) {
+            room.messages = pastMessages.map(m => ({
+              id: m._id.toString(),
+              sender: m.sender,
+              text: m.text,
+              time: m.time,
+              isSystem: m.isSystem
+            }));
+          }
+        } catch (dbMsgErr) {
+          console.warn('[MongoDB] Error loading past messages:', dbMsgErr.message);
+        }
+
+        // Persist room to MongoDB in background
+        Room.findOneAndUpdate(
+          { roomId: normalizedRoomId },
+          { 
+            hostUserId: room.hostUserId,
+            hostName: username,
+            playlist: room.playlist,
+            currentTrackIndex: room.currentTrackIndex,
+            lastActive: new Date()
+          },
+          { upsert: true }
+        ).catch(() => {});
       }
 
       // Check if this user (by userId or socket.id) already exists in room!
@@ -143,6 +182,13 @@ function registerSocketHandlers(io) {
           isPlaying: room.isPlaying,
           currentTime: 0
         });
+
+        // Persist playlist & active track state to MongoDB in background
+        Room.findOneAndUpdate(
+          { roomId: room.id },
+          { playlist: room.playlist, currentTrackIndex: room.currentTrackIndex, lastActive: new Date() },
+          { upsert: true }
+        ).catch(() => {});
       }
     });
 
@@ -162,6 +208,13 @@ function registerSocketHandlers(io) {
 
       room.playlist.push(newTrack);
       io.to(room.id).emit('playlist_updated', room.playlist);
+
+      // Persist updated playlist to MongoDB
+      Room.findOneAndUpdate(
+        { roomId: room.id },
+        { playlist: room.playlist, lastActive: new Date() },
+        { upsert: true }
+      ).catch(() => {});
 
       const alertMsg = {
         id: Date.now() + Math.random().toString(),
@@ -214,6 +267,15 @@ function registerSocketHandlers(io) {
 
       room.messages.push(chatMsg);
       io.to(room.id).emit('new_message', chatMsg);
+
+      // Persist chat message to MongoDB in background
+      Message.create({
+        roomId: room.id,
+        sender: username,
+        text: message,
+        time: chatMsg.time,
+        isSystem: false
+      }).catch(() => {});
     });
 
     // Explicit Leave Room Event (Host explicitly clicking Leave Jam)
