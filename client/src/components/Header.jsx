@@ -44,29 +44,29 @@ export default function Header({
   };
 
   return (
-    <header className="h-14 sm:h-16 px-3 sm:px-6 md:px-8 shrink-0 flex items-center justify-between gap-2 sm:gap-4 border-b border-white/[0.12] bg-white/[0.03] backdrop-blur-3xl z-40 select-none shadow-[0_4px_30px_rgba(0,0,0,0.4)] transition-all duration-700">
+    <header className="h-14 sm:h-16 px-2.5 sm:px-6 md:px-8 shrink-0 flex items-center justify-between gap-1.5 sm:gap-4 border-b border-white/[0.12] bg-white/[0.03] backdrop-blur-3xl z-40 select-none shadow-[0_4px_30px_rgba(0,0,0,0.4)] transition-all duration-700">
       {/* 1. Left: Brand Logo & Title with Live Socket Online Dot */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <div 
-          className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg ring-1 ring-white/20 shrink-0 transition-all duration-700"
+          className="relative w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl flex items-center justify-center shadow-lg ring-1 ring-white/20 shrink-0 transition-all duration-700"
           style={{ background: brandGradient || 'linear-gradient(135deg, #f43f5e, #fb7185)' }}
         >
-          <Disc3 className="text-white animate-[spin_8s_linear_infinite]" size={18} />
+          <Disc3 className="text-white animate-[spin_8s_linear_infinite]" size={16} />
           {/* Live Socket Status Dot */}
           <span 
-            className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-zinc-950 transition-colors ${
+            className={`absolute -top-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full border-2 border-zinc-950 transition-colors ${
               isSocketConnected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-rose-500'
             }`} 
             title={isSocketConnected ? 'Online (Real-time Sync Active)' : 'Connecting...'}
           />
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className="text-sm sm:text-base font-bold tracking-tight text-white whitespace-nowrap">
-            MusicTogether
+        <div className="flex items-center gap-1 sm:gap-2">
+          <span className="text-xs sm:text-base font-bold tracking-tight text-white whitespace-nowrap">
+            Music<span className="text-rose-400">Together</span>
           </span>
           <span 
-            className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-md hidden xs:inline-block shadow-sm transition-colors duration-700"
+            className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full border border-white/10 backdrop-blur-md hidden md:inline-block shadow-sm transition-colors duration-700"
             style={{ 
               backgroundColor: `${moodProfile?.colors?.[0] || '#f43f5e'}22`, 
               color: moodProfile?.colors?.[0] || '#f43f5e' 
@@ -78,27 +78,27 @@ export default function Header({
       </div>
 
       {/* 2. Center: Translucent Glassmorphism Search Bar */}
-      <div className="flex-1 max-w-xs sm:max-w-md mx-1 sm:mx-4">
+      <div className="flex-1 max-w-[140px] xs:max-w-[190px] sm:max-w-md mx-1 sm:mx-4">
         <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full group">
           <button 
             type="submit" 
-            className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-400 group-focus-within:text-white hover:text-rose-400 transition-colors cursor-pointer"
+            className="absolute inset-y-0 left-0 pl-2.5 sm:pl-3 flex items-center text-zinc-400 group-focus-within:text-white hover:text-rose-400 transition-colors cursor-pointer"
             title="Search"
           >
-            <Search size={14} className="sm:w-4 sm:h-4" />
+            <Search size={13} className="sm:w-4 sm:h-4" />
           </button>
 
           <input
             type="text"
-            placeholder="Search songs... (Enter)"
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 sm:h-10 pl-8 sm:pl-10 pr-7 sm:pr-9 bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.12] border border-white/10 focus:border-white/30 rounded-full text-xs sm:text-sm text-zinc-100 placeholder-zinc-400 outline-none backdrop-blur-2xl transition-all duration-300 shadow-inner"
+            className="w-full h-7 sm:h-10 pl-7 sm:pl-10 pr-6 sm:pr-9 bg-white/[0.05] hover:bg-white/[0.08] focus:bg-white/[0.12] border border-white/10 focus:border-white/30 rounded-full text-[11px] sm:text-sm text-zinc-100 placeholder-zinc-400 outline-none backdrop-blur-2xl transition-all duration-300 shadow-inner"
           />
 
           {isSearching ? (
-            <div className="absolute inset-y-0 right-0 pr-2.5 sm:pr-3.5 flex items-center pointer-events-none text-rose-400">
-              <Loader2 size={14} className="animate-spin" />
+            <div className="absolute inset-y-0 right-0 pr-2 sm:pr-3.5 flex items-center pointer-events-none text-rose-400">
+              <Loader2 size={13} className="animate-spin" />
             </div>
           ) : searchQuery ? (
             <button
@@ -107,7 +107,7 @@ export default function Header({
                 setSearchQuery('');
                 onSearch('Arijit Singh');
               }}
-              className="absolute inset-y-0 right-0 pr-2.5 sm:pr-3.5 flex items-center text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs font-bold"
+              className="absolute inset-y-0 right-0 pr-2 sm:pr-3.5 flex items-center text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px] sm:text-xs font-bold"
               title="Clear"
             >
               ✕

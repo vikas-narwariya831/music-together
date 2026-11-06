@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BACKEND_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'https://server-chi-liard.vercel.app';
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const BACKEND_BASE_URL = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_BACKEND_URL || 'https://server-chi-liard.vercel.app');
 
 const api = axios.create({
   baseURL: `${BACKEND_BASE_URL}/api`,

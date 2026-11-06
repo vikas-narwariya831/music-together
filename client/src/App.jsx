@@ -70,9 +70,18 @@ function App() {
 
   // 1. Initial Socket Connection & Auto-Join URL Room Parameter (?room=xyz)
   useEffect(() => {
-    const s = io(SOCKET_SERVER_URL, {
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5
+    // Determine backend socket url: local first, then deployed
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const serverUrl = isLocal ? 'http://localhost:5000' : (import.meta.env.VITE_SOCKET_URL || 'https://server-chi-liard.vercel.app');
+
+    const s = io(serverUrl, {
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      autoConnect: true
     });
     setSocket(s);
 
@@ -96,7 +105,17 @@ function App() {
       }
     });
 
-    s.on('disconnect', () => {
+    s.on('disconnect', (reason) => {
+      console.warn('Socket disconnected:', reason);
+      setIsSocketConnected(false);
+      // Auto-reconnect on disconnect
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        s.connect();
+      }
+    });
+
+    s.on('connect_error', (err) => {
+      console.warn('Socket connection error:', err.message);
       setIsSocketConnected(false);
     });
 
