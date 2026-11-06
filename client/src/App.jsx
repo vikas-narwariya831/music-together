@@ -106,22 +106,26 @@ function App() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('room_sync_state', (state) => {
-      console.log('Received room_sync_state:', state);
+    socket.on('room_sync_state', (data) => {
+      console.log('Received room_sync_state:', data);
+      const state = data?.room || data;
       if (state.playlist && state.playlist.length > 0) {
         setPlaylist(state.playlist);
       }
-      setCurrentTrackIndex(state.currentTrackIndex);
-      setIsPlaying(state.isPlaying);
-      setCurrentTime(state.currentTime);
+      if (typeof state.currentTrackIndex === 'number') {
+        setCurrentTrackIndex(state.currentTrackIndex);
+      }
+      setIsPlaying(Boolean(state.isPlaying));
+      const syncTime = state.liveTime !== undefined ? state.liveTime : (state.currentTime || 0);
+      setCurrentTime(syncTime);
 
       if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
-        ytAudioBridgeRef.current.seekTo(state.currentTime);
+        ytAudioBridgeRef.current.seekTo(syncTime);
       }
 
       if (audioRef.current) {
         isSyncingRef.current = true;
-        audioRef.current.currentTime = state.currentTime;
+        audioRef.current.currentTime = syncTime;
         if (state.isPlaying) {
           audioRef.current.play().catch(console.error);
         } else {
@@ -173,17 +177,23 @@ function App() {
     });
 
     socket.on('track_changed', ({ currentTrackIndex: idx, isPlaying: playing, currentTime: time }) => {
+      console.log('⚡ Socket track_changed received:', idx);
       setCurrentTrackIndex(idx);
       setIsPlaying(playing);
-      setCurrentTime(time);
+      setCurrentTime(time || 0);
       if (ytAudioBridgeRef.current && typeof ytAudioBridgeRef.current.seekTo === 'function') {
-        ytAudioBridgeRef.current.seekTo(time);
+        ytAudioBridgeRef.current.seekTo(time || 0);
+        if (playing && typeof ytAudioBridgeRef.current.play === 'function') {
+          ytAudioBridgeRef.current.play();
+        }
       }
       if (audioRef.current) {
         isSyncingRef.current = true;
-        audioRef.current.currentTime = time;
+        audioRef.current.currentTime = time || 0;
         if (playing) {
           audioRef.current.play().catch(console.error);
+        } else {
+          audioRef.current.pause();
         }
         setTimeout(() => { isSyncingRef.current = false; }, 300);
       }
@@ -312,7 +322,11 @@ function App() {
     }
 
     if (isSessionActive && socket) {
-      socket.emit('sync_change_track', { roomId, trackIndex: index });
+      socket.emit('sync_change_track', { 
+        roomId, 
+        trackIndex: index,
+        playlist: playlist 
+      });
     }
   };
 

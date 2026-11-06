@@ -109,9 +109,14 @@ function registerSocketHandlers(io) {
     });
 
     // Change Track
-    socket.on('sync_change_track', ({ roomId, trackIndex }) => {
+    socket.on('sync_change_track', ({ roomId, trackIndex, playlist }) => {
       const room = rooms.get(roomId?.toLowerCase());
       if (!room) return;
+
+      if (playlist && Array.isArray(playlist) && playlist.length > 0) {
+        room.playlist = playlist;
+        io.to(room.id).emit('playlist_updated', room.playlist);
+      }
 
       if (trackIndex >= 0 && trackIndex < room.playlist.length) {
         room.currentTrackIndex = trackIndex;
