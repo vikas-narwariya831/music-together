@@ -392,6 +392,15 @@ function App() {
         if (results[0]?.duration) {
           setDuration(results[0].duration);
         }
+
+        // If in an active Jam session, sync the entire new searched playlist & track 0 with everyone in the room!
+        if (isSessionActive && socket && roomId) {
+          socket.emit('sync_change_track', {
+            roomId,
+            trackIndex: 0,
+            playlist: results
+          });
+        }
       }
     } catch (err) {
       console.error('Search failed:', err);
