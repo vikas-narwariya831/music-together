@@ -65,14 +65,31 @@ function App() {
   const isSyncingRef = useRef(false);
   const chatBottomRef = useRef(null);
 
-  // 1. Initial Socket Connection
+  // 1. Initial Socket Connection & Auto-Join URL Room Parameter (?room=xyz)
   useEffect(() => {
-    const s = io(SOCKET_SERVER_URL);
+    const s = io(SOCKET_SERVER_URL, {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5
+    });
     setSocket(s);
 
     s.on('connect', () => {
       console.log('⚡ Connected to Music Together WebSocket server');
       refreshRoomsList();
+
+      // Check if URL contains ?room=room-code
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlRoom = searchParams.get('room');
+      if (urlRoom && urlRoom.trim()) {
+        const cleanRoom = urlRoom.trim().toLowerCase();
+        console.log(`🔗 Auto-joining room from URL parameter: ${cleanRoom}`);
+        setRoomId(cleanRoom);
+        setIsSessionActive(true);
+        s.emit('join_room', {
+          roomId: cleanRoom,
+          username: username
+        });
+      }
     });
 
     return () => {
