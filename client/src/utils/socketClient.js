@@ -1,3 +1,4 @@
+import './versionManager';
 import { io } from 'socket.io-client';
 
 const isLocal = typeof window !== 'undefined' && (
