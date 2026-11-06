@@ -46,6 +46,28 @@ export const fetchRoomDetails = async (roomId) => {
   }
 };
 
+// Save user nickname linked to persistent browser ID in MongoDB
+export const saveUserProfileToDB = async (browserId, username) => {
+  try {
+    const response = await api.post('/user/profile', { browserId, username });
+    return response.data?.user || null;
+  } catch (error) {
+    console.warn('saveUserProfileToDB error:', error.message);
+    return null;
+  }
+};
+
+// Fetch user profile from MongoDB by browser ID
+export const fetchUserProfileFromDB = async (browserId) => {
+  try {
+    const response = await api.get(`/user/profile/${browserId}`);
+    return response.data?.user || null;
+  } catch (error) {
+    // 404 is normal for first time visitors
+    return null;
+  }
+};
+
 // Apple iTunes Search API (Backup 30s preview)
 export const searchITunesSongs = async (term = 'bollywood hits', limit = 25) => {
   try {

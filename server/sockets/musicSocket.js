@@ -57,10 +57,41 @@ function registerSocketHandlers(io) {
       username: socket.username
     });
 
-    // Verify user identity & save in MongoDB on socket connection
+    // Verify user identity & fetch/save in MongoDB on socket connection
     socket.on('check_user', async ({ userId, username }) => {
       const uid = userId || socket.userId || ('usr_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36));
-      const cleanName = (username || socket.username || 'Vikas').trim();
+      let finalName = (username || socket.username || 'Vikas').trim();
+
+      try {
+        const existing = await User.findOne({ userId: uid });
+        if (existing && existing.username) {
+          finalName = existing.username;
+          existing.lastSeen = new Date();
+          await existing.save();
+        } else {
+          await User.create({
+            userId: uid,
+            username: finalName
+          });
+        }
+      } catch (err) {
+        console.warn('[User Check Error]:', err.message);
+      }
+
+      socket.userId = uid;
+      socket.username = finalName;
+
+      socket.emit('user_verified', {
+        userId: uid,
+        username: finalName
+      });
+    });
+
+    // Save profile directly from NicknameModal via socket
+    socket.on('save_user_profile', async ({ browserId, username }) => {
+      const uid = browserId || socket.userId;
+      const cleanName = (username || '').trim();
+      if (!cleanName || !uid) return;
 
       try {
         await User.findOneAndUpdate(
@@ -68,14 +99,15 @@ function registerSocketHandlers(io) {
           { username: cleanName, lastSeen: new Date() },
           { upsert: true, new: true }
         );
+        socket.username = cleanName;
+        socket.emit('profile_saved', {
+          browserId: uid,
+          username: cleanName,
+          success: true
+        });
       } catch (err) {
-        console.warn('[User Check Error]:', err.message);
+        console.warn('[Save User Profile Error]:', err.message);
       }
-
-      socket.emit('user_verified', {
-        userId: uid,
-        username: cleanName
-      });
     });
 
     // Join room

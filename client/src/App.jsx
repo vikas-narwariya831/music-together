@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { fetchActiveRooms, searchFullSongs, searchITunesSongs } from './api/musicApi';
+import { 
+  fetchActiveRooms, 
+  searchFullSongs, 
+  searchITunesSongs,
+  saveUserProfileToDB,
+  fetchUserProfileFromDB 
+} from './api/musicApi';
 import { detectTrackMood } from './utils/visualizerIntelligence';
 import audioCoordinator from './utils/audioCoordinator';
 import socket, { getOrCreateUserId, getStoredUsername } from './utils/socketClient';
@@ -193,9 +199,34 @@ function App() {
     };
   }, []); // ✅ Empty deps — uses refs to read latest roomId/username without stale closures
 
-  // 2. Fetch Initial Songs
+  // 2. Fetch Initial Songs & Sync Saved Profile from MongoDB Atlas
   useEffect(() => {
     handleSearch('Arijit Singh');
+
+    // Automatically check MongoDB Atlas for this browser ID and save to local storage
+    const syncProfileFromDB = async () => {
+      try {
+        const profile = await fetchUserProfileFromDB(userId);
+        if (profile?.username) {
+          console.log(`🍃 Retrieved saved username from MongoDB for browser ID: ${profile.username}`);
+          setUsername(profile.username);
+          localStorage.setItem('musictogether_user', profile.username);
+          localStorage.setItem('musictogether_has_visited', 'true');
+          setShowNicknameModal(false);
+
+          if (socket) {
+            socket.auth = {
+              userId: userId,
+              username: profile.username
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync profile from DB:', err);
+      }
+    };
+
+    syncProfileFromDB();
   }, []);
 
   // Global Keyboard Shortcuts (Space for Play/Pause, Arrow Right/Left for Seek, M for Mute)
@@ -685,18 +716,29 @@ function App() {
     setUsername(trimmed);
     localStorage.setItem('musictogether_user', trimmed);
     localStorage.setItem('musictogether_has_visited', 'true');
+
+    // 1. Immediately save to MongoDB Atlas linked to browser ID
+    saveUserProfileToDB(userId, trimmed).catch(err => {
+      console.warn('Error saving profile to MongoDB:', err);
+    });
+
+    // 2. Update socket auth & inform server
     if (socket) {
       socket.auth = {
         userId: userId,
         username: trimmed
       };
-    }
-    if (socket && isSessionActive && roomId) {
-      socket.emit('update_nickname', {
-        roomId,
-        username: trimmed,
-        userId: userId
+      socket.emit('save_user_profile', {
+        browserId: userId,
+        username: trimmed
       });
+      if (isSessionActive && roomId) {
+        socket.emit('update_nickname', {
+          roomId,
+          username: trimmed,
+          userId: userId
+        });
+      }
     }
   };
 
