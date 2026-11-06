@@ -24,4 +24,5 @@ const UserSchema = new mongoose.Schema({
   bufferCommands: false // Never hang queries if DB is offline/connecting
 });
 
-module.exports = mongoose.model('User', UserSchema);
+// Explicitly use collection 'mt_users' to avoid collision with legacy 'users' index (e.g. email_1)
+module.exports = mongoose.model('User', UserSchema, 'mt_users');

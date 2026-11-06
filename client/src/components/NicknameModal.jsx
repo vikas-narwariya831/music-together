@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Sparkles, X, Check } from 'lucide-react';
+import { User, Sparkles, X, Check, Loader2, AlertCircle } from 'lucide-react';
 
 export default function NicknameModal({
   isOpen,
@@ -8,21 +8,43 @@ export default function NicknameModal({
   onSaveName
 }) {
   const [nickname, setNickname] = useState(currentName);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Sync local input whenever the modal is opened or currentName changes
   useEffect(() => {
     if (isOpen) {
       setNickname(currentName || '');
+      setErrorMsg('');
+      setIsSaving(false);
     }
   }, [isOpen, currentName]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nickname.trim()) return;
-    onSaveName(nickname.trim());
-    onClose();
+    const clean = nickname.trim();
+    if (!clean || isSaving) return;
+
+    setIsSaving(true);
+    setErrorMsg('');
+
+    try {
+      if (typeof onSaveName === 'function') {
+        const res = await onSaveName(clean);
+        if (res && res.success === false) {
+          setErrorMsg(res.message || 'Failed to save to database');
+          setIsSaving(false);
+          return;
+        }
+      }
+      setIsSaving(false);
+      onClose();
+    } catch (err) {
+      setErrorMsg(err.message || 'Error saving nickname');
+      setIsSaving(false);
+    }
   };
 
   const quickNames = ['Vikas', 'Vikas 🎵', 'DJ Vikas', 'Rockstar', 'Viku', 'Acoustic Soul'];
@@ -39,7 +61,8 @@ export default function NicknameModal({
         {/* Close button */}
         <button 
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+          disabled={isSaving}
+          className="absolute top-5 right-5 p-2 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40"
         >
           <X size={16} />
         </button>
@@ -57,6 +80,14 @@ export default function NicknameModal({
           </p>
         </div>
 
+        {/* Error notification banner */}
+        {errorMsg && (
+          <div className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2.5 flex items-start gap-2 animate-in fade-in">
+            <AlertCircle size={15} className="shrink-0 text-rose-400 mt-0.5" />
+            <span className="leading-tight">{errorMsg}</span>
+          </div>
+        )}
+
         {/* Name Input Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="relative flex items-center">
@@ -67,10 +98,11 @@ export default function NicknameModal({
               type="text"
               autoFocus
               maxLength={24}
+              disabled={isSaving}
               placeholder="e.g. Vikas"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full bg-white/[0.06] hover:bg-white/[0.09] focus:bg-white/[0.12] border border-white/15 focus:border-rose-500/80 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none backdrop-blur-xl transition-all shadow-inner"
+              className="w-full bg-white/[0.06] hover:bg-white/[0.09] focus:bg-white/[0.12] border border-white/15 focus:border-rose-500/80 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-500 outline-none backdrop-blur-xl transition-all shadow-inner disabled:opacity-60"
             />
           </div>
 
@@ -84,8 +116,9 @@ export default function NicknameModal({
                 <button
                   key={name}
                   type="button"
+                  disabled={isSaving}
                   onClick={() => setNickname(name)}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.05] hover:bg-white/15 text-zinc-300 hover:text-white border border-white/10 transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-white/[0.05] hover:bg-white/15 text-zinc-300 hover:text-white border border-white/10 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {name}
                 </button>
@@ -97,16 +130,27 @@ export default function NicknameModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-semibold border border-white/10 transition-colors cursor-pointer"
+              disabled={isSaving}
+              className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-zinc-300 text-xs font-semibold border border-white/10 transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              disabled={isSaving || !nickname.trim()}
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Check size={14} />
-              <span>Save Name</span>
+              {isSaving ? (
+                <>
+                  <Loader2 size={14} className="animate-spin text-white" />
+                  <span>Saving to DB...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>Save Name</span>
+                </>
+              )}
             </button>
           </div>
         </form>

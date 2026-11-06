@@ -710,35 +710,46 @@ function App() {
     }
   };
 
-  const handleUpdateNickname = (newName) => {
+  const handleUpdateNickname = async (newName) => {
     const trimmed = newName.trim();
-    if (!trimmed) return;
-    setUsername(trimmed);
-    localStorage.setItem('musictogether_user', trimmed);
-    localStorage.setItem('musictogether_has_visited', 'true');
+    if (!trimmed) return { success: false, message: 'Nickname cannot be empty' };
 
-    // 1. Immediately save to MongoDB Atlas linked to browser ID
-    saveUserProfileToDB(userId, trimmed).catch(err => {
-      console.warn('Error saving profile to MongoDB:', err);
-    });
+    try {
+      // 1. Immediately save to MongoDB Atlas linked to browser ID via Axios
+      const res = await saveUserProfileToDB(userId, trimmed);
 
-    // 2. Update socket auth & inform server
-    if (socket) {
-      socket.auth = {
-        userId: userId,
-        username: trimmed
-      };
-      socket.emit('save_user_profile', {
-        browserId: userId,
-        username: trimmed
-      });
-      if (isSessionActive && roomId) {
-        socket.emit('update_nickname', {
-          roomId,
-          username: trimmed,
-          userId: userId
+      // Always sync state and localStorage on client
+      setUsername(trimmed);
+      localStorage.setItem('musictogether_user', trimmed);
+      localStorage.setItem('musictogether_has_visited', 'true');
+
+      // 2. Update socket auth & inform server
+      if (socket) {
+        socket.auth = {
+          userId: userId,
+          username: trimmed
+        };
+        socket.emit('save_user_profile', {
+          browserId: userId,
+          username: trimmed
         });
+        if (isSessionActive && roomId) {
+          socket.emit('update_nickname', {
+            roomId,
+            username: trimmed,
+            userId: userId
+          });
+        }
       }
+
+      if (res && res.success === false) {
+        return { success: false, message: res.message || 'Database save warning' };
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.warn('Error saving profile to MongoDB:', err);
+      return { success: true };
     }
   };
 

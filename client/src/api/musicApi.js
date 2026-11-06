@@ -49,11 +49,12 @@ export const fetchRoomDetails = async (roomId) => {
 // Save user nickname linked to persistent browser ID in MongoDB
 export const saveUserProfileToDB = async (browserId, username) => {
   try {
-    const response = await api.post('/user/profile', { browserId, username }, { timeout: 4000 });
-    return response.data?.user || null;
+    const response = await api.post('/user/profile', { browserId, username }, { timeout: 6000 });
+    return response.data || { success: true };
   } catch (error) {
     console.warn('saveUserProfileToDB error:', error.message);
-    return null;
+    const msg = error.response?.data?.message || (error.code === 'ECONNABORTED' ? 'Database connection timed out' : error.message);
+    return { success: false, message: msg };
   }
 };
 

@@ -17,4 +17,4 @@ const MessageSchema = new mongoose.Schema({
   bufferCommands: false
 });
 
-module.exports = mongoose.model('Message', MessageSchema);
+module.exports = mongoose.model('Message', MessageSchema, 'mt_messages');

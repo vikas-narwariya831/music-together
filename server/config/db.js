@@ -24,6 +24,7 @@ const connectDB = async () => {
 
   if (!cachedPromise) {
     cachedPromise = mongoose.connect(uri, {
+      dbName: 'musictogether',
       serverSelectionTimeoutMS: 4000,
       bufferCommands: false // Never hang/buffer queries for 10s if DB is offline or connecting!
     }).catch(err => {
