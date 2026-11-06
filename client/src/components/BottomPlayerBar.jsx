@@ -29,6 +29,7 @@ export default function BottomPlayerBar({
   isSessionActive = false,
   onOpenSessionModal
 }) {
+  const [showMobileVolume, setShowMobileVolume] = React.useState(false);
   const currentDuration = duration > 0 ? duration : 180;
   const progressPercent = Math.min(100, Math.max(0, (currentTime / currentDuration) * 100));
   const effectiveVolume = isMuted ? 0 : volume;
@@ -170,53 +171,108 @@ export default function BottomPlayerBar({
           </button>
         )}
 
-        {/* Compact Volume Control: Icon toggle on mobile, slider on sm+ screens */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 p-2 sm:px-3.5 sm:py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
-          <button 
-            type="button" 
-            onClick={onToggleMute} 
-            className="text-zinc-200 hover:text-white transition-colors cursor-pointer shrink-0"
-            title={isMuted ? 'Unmute' : 'Mute'}
-          >
-            {isMuted || effectiveVolume === 0 ? (
-              <VolumeX size={16} className="text-rose-400" />
-            ) : effectiveVolume < 0.5 ? (
-              <Volume1 size={16} />
-            ) : (
-              <Volume2 size={16} />
-            )}
-          </button>
-          
-          {/* Glass Volume Fill Track (Hidden on tiny mobile to save space, visible sm+) */}
-          <div 
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickX = e.clientX - rect.left;
-              const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-              onVolumeChange({ target: { value: ratio } });
-            }}
-            className="hidden sm:flex relative w-14 md:w-20 h-3 items-center cursor-pointer group"
-          >
-            {/* Background unfilled glass track */}
-            <div className="w-full h-1 sm:h-1.5 group-hover:h-2 rounded-full bg-white/20 overflow-hidden transition-all relative">
-              {/* Active filled volume gradient */}
+        {/* Compact Volume Control: Popup slider on mobile, inline on sm+ screens */}
+        <div className="relative flex items-center">
+          {/* Mobile Popover Volume Slider */}
+          {showMobileVolume && (
+            <div 
+              className="sm:hidden absolute bottom-14 right-0 bg-zinc-950/95 border border-white/20 p-3 rounded-2xl shadow-2xl backdrop-blur-2xl flex flex-col items-center gap-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between w-28 text-[11px] font-bold text-zinc-300">
+                <span>Volume</span>
+                <span className="font-mono text-rose-400">{volumePercent}%</span>
+              </div>
+
+              {/* Mobile Volume Slider Track */}
               <div 
-                className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-75"
-                style={{ width: `${volumePercent}%` }}
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+                  onVolumeChange({ target: { value: ratio } });
+                }}
+                className="relative w-28 h-5 flex items-center cursor-pointer"
+              >
+                <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden relative">
+                  <div 
+                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400 transition-all duration-75"
+                    style={{ width: `${volumePercent}%` }}
+                  />
+                </div>
+                <div 
+                  className="absolute w-4 h-4 rounded-full bg-white shadow-md ring-2 ring-rose-500 -translate-x-1/2 pointer-events-none"
+                  style={{ left: `${volumePercent}%` }}
+                />
+              </div>
+
+              {/* Mute button inside popup */}
+              <button
+                type="button"
+                onClick={onToggleMute}
+                className="w-full py-1 text-center text-[10px] font-semibold text-zinc-400 hover:text-white rounded-lg bg-white/5 border border-white/10"
+              >
+                {isMuted ? 'Unmute 🔊' : 'Mute 🔇'}
+              </button>
+            </div>
+          )}
+
+          {/* Volume Capsule */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 p-2 sm:px-3.5 sm:py-2 rounded-full backdrop-blur-2xl transition-all shadow-inner">
+            <button 
+              type="button" 
+              onClick={() => {
+                // On mobile, clicking toggles the volume slider popover!
+                // On sm+ (desktop), it toggles mute
+                if (window.innerWidth < 640) {
+                  setShowMobileVolume(prev => !prev);
+                } else {
+                  onToggleMute();
+                }
+              }} 
+              className="text-zinc-200 hover:text-white transition-colors cursor-pointer shrink-0"
+              title={isMuted ? 'Unmute' : 'Volume'}
+            >
+              {isMuted || effectiveVolume === 0 ? (
+                <VolumeX size={16} className="text-rose-400" />
+              ) : effectiveVolume < 0.5 ? (
+                <Volume1 size={16} />
+              ) : (
+                <Volume2 size={16} />
+              )}
+            </button>
+            
+            {/* Glass Volume Fill Track (Hidden on tiny mobile to save space, visible sm+) */}
+            <div 
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+                onVolumeChange({ target: { value: ratio } });
+              }}
+              className="hidden sm:flex relative w-14 md:w-20 h-3 items-center cursor-pointer group"
+            >
+              {/* Background unfilled glass track */}
+              <div className="w-full h-1 sm:h-1.5 group-hover:h-2 rounded-full bg-white/20 overflow-hidden transition-all relative">
+                {/* Active filled volume gradient */}
+                <div 
+                  className="h-full rounded-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-75"
+                  style={{ width: `${volumePercent}%` }}
+                />
+              </div>
+
+              {/* Glowing Volume Thumb Knob */}
+              <div 
+                className="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-white shadow-md shadow-rose-500/40 ring-1 ring-rose-400 -translate-x-1/2 pointer-events-none transition-all"
+                style={{ left: `${volumePercent}%` }}
               />
             </div>
 
-            {/* Glowing Volume Thumb Knob */}
-            <div 
-              className="absolute w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-white shadow-md shadow-rose-500/40 ring-1 ring-rose-400 -translate-x-1/2 pointer-events-none transition-all"
-              style={{ left: `${volumePercent}%` }}
-            />
+            {/* Real-time Percentage Tag */}
+            <span className="text-[10px] font-mono font-bold text-zinc-200 w-6 text-right select-none hidden md:inline-block">
+              {volumePercent}%
+            </span>
           </div>
-
-          {/* Real-time Percentage Tag */}
-          <span className="text-[10px] font-mono font-bold text-zinc-200 w-6 text-right select-none hidden md:inline-block">
-            {volumePercent}%
-          </span>
         </div>
       </div>
     </footer>

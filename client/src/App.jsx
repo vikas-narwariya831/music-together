@@ -51,7 +51,10 @@ function App() {
   // Modals & Chat
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [showNicknameModal, setShowNicknameModal] = useState(() => {
+    // Check if user has already visited and chosen a name
+    return !localStorage.getItem('musictogether_has_visited');
+  });
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -523,6 +526,7 @@ function App() {
     if (!trimmed) return;
     setUsername(trimmed);
     localStorage.setItem('musictogether_user', trimmed);
+    localStorage.setItem('musictogether_has_visited', 'true');
     if (socket && isSessionActive && roomId) {
       socket.emit('update_nickname', {
         roomId,
