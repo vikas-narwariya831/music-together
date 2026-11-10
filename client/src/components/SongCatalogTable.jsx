@@ -36,13 +36,14 @@ export default function SongCatalogTable({
   }, [currentSong?.title, currentSong?.artist]);
 
   const categories = [
-    'Arijit Singh', 
-    'Bollywood Top 50', 
-    'Sidhu Moosewala', 
-    'Diljit Dosanjh', 
-    'AP Dhillon', 
-    'Taylor Swift', 
+    'Trending Full',
+    'Hindi',
+    'Bollywood Lofi',
+    'Hindi Lofi',
     'Late Night Lo-Fi',
+    'Electronic',
+    'Hip-Hop',
+    'Arijit Singh',
     'Punjabi Hits'
   ];
 
@@ -202,7 +203,7 @@ export default function SongCatalogTable({
                 )}
 
                 <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-200 border border-white/10 backdrop-blur-md">
-                  Lossless Audio
+                  {currentSong.source === 'itunes' ? '30s Preview' : 'Full-Length Audio'}
                 </span>
               </div>
 

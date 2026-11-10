@@ -113,7 +113,7 @@ export default function Header({
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                onSearch('Arijit Singh');
+                onSearch('Trending Full');
               }}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-white transition-colors cursor-pointer text-xs font-bold"
               title="Clear"

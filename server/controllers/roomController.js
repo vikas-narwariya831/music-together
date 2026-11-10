@@ -1,33 +1,39 @@
-const yts = require('yt-search');
 const { rooms, DEFAULT_TRACKS, getLivePlaybackTime } = require('../data/roomsStore');
 
-// GET /api/search?q=query - Full-length songs via YouTube/Audio Search
+// GET /api/search?q=query - Official iTunes Search API + curated catalog fallback (No YouTube scraping)
 const searchFullSongs = async (req, res) => {
   try {
-    const query = req.query.q || 'Arijit Singh';
-    const searchResults = await yts(query);
+    const query = (req.query.q || 'Arijit Singh').trim();
+    const encoded = encodeURIComponent(query);
 
-    if (!searchResults || !searchResults.videos) {
-      return res.json({ success: true, tracks: [] });
+    const response = await fetch(
+      `https://itunes.apple.com/search?term=${encoded}&entity=song&limit=25`
+    );
+
+    if (!response.ok) {
+      throw new Error(`iTunes API responded with ${response.status}`);
     }
 
-    const tracks = searchResults.videos.slice(0, 20).map((v) => ({
-      id: 'yt-' + v.videoId,
-      title: v.title,
-      artist: v.author?.name || 'Artist',
-      src: v.url,
-      videoId: v.videoId,
-      duration: v.seconds || 240,
-      cover: v.thumbnail || v.image,
-      isYouTube: true,
-      views: v.views,
-      timestamp: v.timestamp
-    }));
+    const data = await response.json();
+    const tracks = (data?.results || [])
+      .filter((item) => item.previewUrl)
+      .map((item) => ({
+        id: 'itunes-' + item.trackId,
+        title: item.trackName,
+        artist: item.artistName,
+        src: item.previewUrl,
+        duration: 30,
+        cover: item.artworkUrl100
+          ? item.artworkUrl100.replace('100x100bb', '600x600bb')
+          : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
+        collectionName: item.collectionName || 'Single',
+        isYouTube: false
+      }));
 
-    res.json({ success: true, tracks });
+    res.json({ success: true, source: 'itunes', tracks });
   } catch (error) {
-    console.error('Search full songs error:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Search songs error:', error.message);
+    res.json({ success: true, source: 'catalog', tracks: DEFAULT_TRACKS });
   }
 };
 

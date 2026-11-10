@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   fetchActiveRooms, 
   searchFullSongs, 
-  searchITunesSongs,
+  extractYouTubeVideoId,
   saveUserProfileToDB,
   fetchUserProfileFromDB 
 } from './api/musicApi';
@@ -60,7 +60,7 @@ function App() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchCategory, setSearchCategory] = useState('Arijit Singh');
+  const [searchCategory, setSearchCategory] = useState('Trending Full');
   const [isSearching, setIsSearching] = useState(false);
 
   // Modals & Chat
@@ -208,7 +208,7 @@ function App() {
 
   // 2. Fetch Initial Songs & Sync Saved Profile from MongoDB Atlas
   useEffect(() => {
-    handleSearch('Arijit Singh');
+    executeSearch('Trending Full');
 
     // Automatically check MongoDB Atlas for this browser ID and save to local storage
     const syncProfileFromDB = async () => {
@@ -235,33 +235,6 @@ function App() {
 
     syncProfileFromDB();
   }, []);
-
-  // Global Keyboard Shortcuts (Space for Play/Pause, Arrow Right/Left for Seek, M for Mute)
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Don't trigger if user is typing in search, chat, or modal input
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        const nextTime = Math.min(duration, currentTime + 5);
-        handleSeek({ target: { value: nextTime } });
-      } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
-        const prevTime = Math.max(0, currentTime - 5);
-        handleSeek({ target: { value: prevTime } });
-      } else if (e.key === 'm' || e.key === 'M') {
-        e.preventDefault();
-        toggleMute();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, currentTime, duration, isMuted, playlist, currentTrackIndex]);
 
   // 3. Socket event listeners for real-time room sync
   useEffect(() => {
@@ -547,8 +520,8 @@ function App() {
     }
   };
 
-  const handleSelectTrack = (index) => {
-    const track = playlist[index];
+  const handleSelectTrack = (index, targetPlaylist = playlist) => {
+    const track = targetPlaylist[index];
     if (!track) return;
 
     // 1. AudioCoordinator: Hard stop all old running audio immediately to prevent duplicate playback!
@@ -652,14 +625,8 @@ function App() {
     if (!query || !query.trim()) return;
     setIsSearching(true);
     try {
-      // 1. First fetch full songs from primary backend engine
-      let results = await searchFullSongs(query.trim());
-      
-      // 2. If backend yielded empty, automatically fallback to iTunes
-      if (!results || results.length === 0) {
-        console.log('Falling back to iTunes preview search...');
-        results = await searchITunesSongs(query.trim(), 25);
-      }
+      // Frontend-first search: official YouTube IFrame URL detection + iTunes Search API (zero ytdl/scraping)
+      const results = await searchFullSongs(query.trim());
 
       if (results && results.length > 0) {
         setPlaylist(results);
@@ -792,21 +759,36 @@ function App() {
     e.preventDefault();
     if (!customUrl.trim()) return;
 
-    const newSong = {
-      id: 'custom-' + Date.now(),
-      title: customTitle.trim() || 'Custom Track',
-      artist: customArtist.trim() || username,
-      src: customUrl.trim(),
-      duration: 180,
-      cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80'
-    };
+    const trimmedUrl = customUrl.trim();
+    const ytVideoId = extractYouTubeVideoId(trimmedUrl);
+
+    const newSong = ytVideoId
+      ? {
+          id: 'yt-' + ytVideoId + '-' + Date.now(),
+          title: customTitle.trim() || 'YouTube Jam Track',
+          artist: customArtist.trim() || 'YouTube IFrame',
+          src: trimmedUrl,
+          videoId: ytVideoId,
+          isYouTube: true,
+          duration: 240,
+          cover: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg`
+        }
+      : {
+          id: 'custom-' + Date.now(),
+          title: customTitle.trim() || 'Custom Track',
+          artist: customArtist.trim() || username,
+          src: trimmedUrl,
+          isYouTube: false,
+          duration: 180,
+          cover: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80'
+        };
 
     if (isSessionActive && socket) {
       socket.emit('add_track', { roomId, username, track: newSong });
     } else {
-      setPlaylist(prev => [newSong, ...prev]);
-      setCurrentTrackIndex(0);
-      handleSelectTrack(0);
+      const updated = [newSong, ...playlist];
+      setPlaylist(updated);
+      handleSelectTrack(0, updated);
     }
 
     setCustomTitle('');
@@ -876,6 +858,15 @@ function App() {
         onPlaying={() => setIsBuffering(false)}
         onCanPlay={() => setIsBuffering(false)}
         onEnded={onEnded}
+        onError={() => {
+          setIsBuffering(false);
+          if (currentTrack?.src) {
+            console.warn(`Audio stream failed for "${currentTrack.title}". Skipping to next track...`);
+            if (isPlaying) {
+              setTimeout(() => handleNextTrack(), 300);
+            }
+          }
+        }}
       />
 
       {/* Official YouTube Audio Bridge: Plays full length songs without showing video */}

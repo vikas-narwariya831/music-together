@@ -36,7 +36,7 @@ export default function AddTrackModal({
           </div>
           <h3 className="text-xl font-bold text-white tracking-tight">Add Custom Song</h3>
           <p className="text-xs text-zinc-400 mt-1">
-            Stream any direct MP3/audio link (Dropbox, Discord, Cloud storage)
+            Paste a YouTube link (official IFrame player) or direct MP3/audio URL
           </p>
         </div>
 
@@ -65,10 +65,10 @@ export default function AddTrackModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-300">Audio Stream URL (MP3/AAC)</label>
+            <label className="text-xs font-semibold text-zinc-300">YouTube or Audio URL (MP3/AAC)</label>
             <input
               type="url"
-              placeholder="https://.../song.mp3"
+              placeholder="https://youtube.com/watch?v=... or https://.../song.mp3"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
               className="w-full bg-black/40 border border-white/10 focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 outline-none transition-colors"
