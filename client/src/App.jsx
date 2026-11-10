@@ -10,6 +10,10 @@ import { detectTrackMood } from './utils/visualizerIntelligence';
 import audioCoordinator from './utils/audioCoordinator';
 import socket, { getOrCreateUserId, getStoredUsername } from './utils/socketClient';
 
+// Custom Hooks
+import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+
 // Components
 import Header from './components/Header';
 import SongCatalogTable from './components/SongCatalogTable';
@@ -50,6 +54,9 @@ function App() {
   const [duration, setDuration] = useState(30);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
+  // ✅ Shuffle & Repeat — now functional
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState('none'); // 'none' | 'one' | 'all'
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -429,6 +436,12 @@ function App() {
       setTimeout(() => setRoomClosedToast(''), 6000);
     });
 
+    // ✅ Room full — notify user gracefully
+    socket.on('room_full', ({ message }) => {
+      setRoomClosedToast(message || 'Room is full. Try another room.');
+      setTimeout(() => setRoomClosedToast(''), 5000);
+    });
+
     return () => {
       socket.off('room_sync_state');
       socket.off('members_updated');
@@ -439,6 +452,7 @@ function App() {
       socket.off('playlist_updated');
       socket.off('new_message');
       socket.off('room_closed');
+      socket.off('room_full');
     };
   }, []);
 
@@ -589,7 +603,17 @@ function App() {
 
   const handleNextTrack = () => {
     if (playlist.length === 0) return;
-    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    let nextIndex;
+    if (repeatMode === 'one') {
+      // Repeat current track — restart it
+      nextIndex = currentTrackIndex;
+    } else if (isShuffle) {
+      // Pick random track (not same as current)
+      do { nextIndex = Math.floor(Math.random() * playlist.length); }
+      while (nextIndex === currentTrackIndex && playlist.length > 1);
+    } else {
+      nextIndex = (currentTrackIndex + 1) % playlist.length;
+    }
     handleSelectTrack(nextIndex);
   };
 
@@ -805,6 +829,17 @@ function App() {
     src: ''
   };
 
+  // ✅ Document title — shows "♪ Song - Artist" in browser tab when playing
+  useDocumentTitle(currentTrack, isPlaying);
+
+  // ✅ Keyboard shortcuts — Space, ArrowLeft, ArrowRight, M
+  useKeyboardShortcuts({
+    onTogglePlay: togglePlay,
+    onNextTrack: handleNextTrack,
+    onPrevTrack: handlePrevTrack,
+    onToggleMute: toggleMute,
+  });
+
   // Dynamic Mood Profile & Color theme calculated dynamically for entire UI Glassmorphism
   const currentMoodProfile = useMemo(() => {
     return detectTrackMood(currentTrack?.title || '', currentTrack?.artist || '');
@@ -950,6 +985,8 @@ function App() {
         duration={duration}
         volume={volume}
         isMuted={isMuted}
+        isShuffle={isShuffle}
+        repeatMode={repeatMode}
         formatTime={formatTime}
         onTogglePlay={togglePlay}
         onPrevTrack={handlePrevTrack}
@@ -957,6 +994,8 @@ function App() {
         onSeek={handleSeek}
         onVolumeChange={handleVolumeChange}
         onToggleMute={toggleMute}
+        onToggleShuffle={() => setIsShuffle(prev => !prev)}
+        onToggleRepeat={() => setRepeatMode(prev => prev === 'none' ? 'one' : prev === 'one' ? 'all' : 'none')}
         isSessionActive={isSessionActive}
         onOpenSessionModal={() => setShowSessionModal(true)}
       />

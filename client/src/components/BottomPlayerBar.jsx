@@ -9,6 +9,7 @@ import {
   VolumeX, 
   Shuffle, 
   Repeat,
+  Repeat1,
   Heart
 } from 'lucide-react';
 
@@ -19,6 +20,8 @@ export default function BottomPlayerBar({
   duration = 180,
   volume = 0.85,
   isMuted = false,
+  isShuffle = false,
+  repeatMode = 'none',   // 'none' | 'one' | 'all'
   formatTime,
   onTogglePlay,
   onPrevTrack,
@@ -26,6 +29,8 @@ export default function BottomPlayerBar({
   onSeek,
   onVolumeChange,
   onToggleMute,
+  onToggleShuffle,
+  onToggleRepeat,
   isSessionActive = false,
   onOpenSessionModal
 }) {
@@ -72,9 +77,10 @@ export default function BottomPlayerBar({
       <div className="flex flex-col items-center gap-1.5 flex-1 max-w-xl mx-2 sm:mx-6">
         <div className="flex items-center gap-4 sm:gap-6">
           <button 
-            type="button" 
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer hidden sm:block" 
-            title="Shuffle"
+            type="button"
+            onClick={onToggleShuffle}
+            className={`transition-colors cursor-pointer hidden sm:block ${isShuffle ? 'text-rose-400' : 'text-zinc-400 hover:text-white'}`}
+            title={isShuffle ? 'Shuffle: ON' : 'Shuffle: OFF'}
           >
             <Shuffle size={15} />
           </button>
@@ -112,11 +118,12 @@ export default function BottomPlayerBar({
           </button>
           
           <button 
-            type="button" 
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer hidden sm:block" 
-            title="Repeat"
+            type="button"
+            onClick={onToggleRepeat}
+            className={`transition-colors cursor-pointer hidden sm:block ${repeatMode !== 'none' ? 'text-rose-400' : 'text-zinc-400 hover:text-white'}`}
+            title={repeatMode === 'none' ? 'Repeat: OFF' : repeatMode === 'one' ? 'Repeat: ONE' : 'Repeat: ALL'}
           >
-            <Repeat size={15} />
+            {repeatMode === 'one' ? <Repeat1 size={15} /> : <Repeat size={15} />}
           </button>
         </div>
 

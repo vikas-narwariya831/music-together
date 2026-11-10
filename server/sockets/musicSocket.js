@@ -23,7 +23,7 @@ function resolveUniqueUsername(requestedName, uid, members) {
   return `${base} (${counter})`;
 }
 
-function registerSocketHandlers(io) {
+function registerSocketHandlers(io, MAX_ROOM_SIZE = 20) {
   // 1. Connection Authentication Middleware: reads userId and username at handshake!
   io.use(async (socket, next) => {
     try {
@@ -114,7 +114,9 @@ function registerSocketHandlers(io) {
     socket.on('join_room', async ({ roomId, username, userId }) => {
       if (!roomId || !username) return;
 
-      const normalizedRoomId = roomId.toLowerCase().trim();
+      // Input sanitization
+      const normalizedRoomId = roomId.toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').slice(0, 50);
+      const sanitizedUsername = (username || 'Friend').trim().slice(0, 30);
       const uid = userId || socket.id;
       socket.join(normalizedRoomId);
 
@@ -177,6 +179,19 @@ function registerSocketHandlers(io) {
       if (uniqueName !== username) {
         socket.emit('username_assigned', { username: uniqueName });
       }
+
+      // ── Max Room Size Check ──────────────────────────────────────────────
+      const isAlreadyMember = room.members.some(m =>
+        (m.userId && m.userId === uid) || m.id === socket.id
+      );
+      if (!isAlreadyMember && room.members.length >= MAX_ROOM_SIZE) {
+        socket.emit('room_full', {
+          message: `Room is full (max ${MAX_ROOM_SIZE} users). Try another room.`
+        });
+        socket.leave(normalizedRoomId);
+        return;
+      }
+      // ────────────────────────────────────────────────────────────────────
 
       // Check if this user (by userId or socket.id) already exists in room!
       const existingIdx = room.members.findIndex(m => 
